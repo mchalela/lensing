@@ -42,7 +42,7 @@ class CFHT(Survey):
 		# MASK<=1 for objects outside the masked regions
 		# weight>0 to have non-negative weights
 		if science_cut:
-			mask = (cls.data['fitclass']==0)*(cls.data['MASK']<=1)*(cls.data['weight']>0)
+			mask = (cls.data['fitclass']==0) & (cls.data['MASK']<=1) & (cls.data['weight']>0)
 			cls.data = cls.data[mask]
 
 	@classonly
