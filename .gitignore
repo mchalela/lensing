@@ -4,6 +4,7 @@ CFHT/
 KiDS/
 DES/
 SDSS/
+Extinction/
 redMapper_test/
 lenscat/grispy.py
 lenscat/read_cat_cut*
