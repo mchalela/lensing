@@ -27,9 +27,9 @@ class Profile(object):
 		# Compute distance and ellipticity components...
 		dist, theta = gentools.sphere_angular_vector(cat['RAJ2000'].to_numpy(), cat['DECJ2000'].to_numpy(),
 													cat['RA'].to_numpy(), cat['DEC'].to_numpy(), units='deg')
-		#theta += np.pi/2.
+		theta += 90. #np.pi/2.
 		dist_Mpc = dist*3600.*self.Mpc_scale # distance to the lens in Mpc
-		et, ex = gentools.polar_rotation(e1, e2, np.deg2rad(theta))
+		et, ex = gentools.polar_rotation(cat['e1'].to_numpy(), cat['e2'].to_numpy(), np.deg2rad(theta))
 
 		# Create bins...
 		if type(bins)==int:
@@ -52,15 +52,15 @@ class Profile(object):
 		self.cero_error = np.zeros(nbin, dtype=float)
 		self.stat_error = np.zeros(nbin, dtype=float)
 
-		Mcorr = np.ones(nbin,int)
-		N = np.zeros(nbin,float)
+		m_cal = np.ones(nbin, float)
+		N = np.zeros(nbin, int)
 
 		for i in range(nbin):
 			mask = digit==i
 			N[i] = mask.sum()
 			if N[i]==0: continue
 			weight = cat['weight'][mask].to_numpy()
-			m_cal[i] = 1 + np.average(cat['m'].to_numpy(), weights=weight)
+			m_cal[i] = 1 + np.average(cat['m'][mask].to_numpy(), weights=weight)
 
 			self.shear[i] = np.average(et[mask]*self.sigma_critic[mask], weights=weight) / m_cal[i]
 			self.cero[i]  = np.average(ex[mask]*self.sigma_critic[mask], weights=weight) / m_cal[i]
@@ -70,8 +70,9 @@ class Profile(object):
 			self.stat_error[i] = np.sqrt(stat_error_num/stat_error_den) / m_cal[i]
 
 			if boot_flag:
-				err_t, err_x = _boot_error(et[mask]*self.sigma_critic[mask],
-								ex[mask]*self.sigma_critic[mask], weight, boot_n)
+				err_t, err_x = self._boot_error(et[mask]*self.sigma_critic[mask],
+												ex[mask]*self.sigma_critic[mask], 
+												weight, boot_n)
 				self.shear_error[i] = err_t  / m_cal[i]
 				self.cero_error[i] = err_x / m_cal[i]
 
@@ -82,10 +83,10 @@ class Profile(object):
 
 	def set_sigma_critic(self, dl, ds, dls):
 		self.beta = dls/ds
-		self.sigma_critic = cvel**2/(4.*np.pi*G*dl) * (1./self.beta) * (pc**2/Msun)
+		self.sigma_critic = cvel**2/(4.*np.pi*G*(dl*1e6*pc)) * (1./self.beta) * (pc**2/Msun)
 		return None
 
-	def _boot_error(shear, cero, weight, nboot):
+	def _boot_error(self, shear, cero, weight, nboot):
 		index=np.arange(len(shear))
 		with NumpyRNGContext(1):
 			bootresult = bootstrap(index, nboot)
@@ -95,6 +96,7 @@ class Profile(object):
 		weight_boot = weight[INDEX]	
 		shear_means=np.average(shear_boot, weights=weight_boot, axis=1)
 		cero_means=np.average(cero_boot, weights=weight_boot, axis=1)
+		del bootresult
 		return np.std(shear_means), np.std(cero_means)
 
 

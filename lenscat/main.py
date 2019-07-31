@@ -96,7 +96,7 @@ def call_gripsy(data):
 	N_cells = 50
 	periodic = {0: (0,360)}
 	pos = data[['RAJ2000', 'DECJ2000']].to_numpy()
-	gsp = GriSPy(pos, N_cells=50, periodic=periodic)
+	gsp = GriSPy(pos, N_cells=N_cells, periodic=periodic, metric='sphere')
 	return gsp
 
 class formats:
