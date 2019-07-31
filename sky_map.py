@@ -63,7 +63,26 @@ m.drawparallels(parallels,labels=[1,0,0,0], fontsize=12)
 m.drawmeridians(meridians)
 
 
+
 # Galactic plane
+xy_e=np.loadtxt('Extinction/E_BV_grid_0100_0500.dat').flatten()
+xy = np.loadtxt('Extinction/l_b_grid_0100_0500.dat')
+x_l=xy[:,::2].flatten()
+y_b=xy[:,1::2].flatten()
+c = SkyCoord(l=x_l*units.degree, b=y_b*units.degree, frame='galactic')
+gal_ra,gal_dec = c.icrs.ra, c.icrs.dec
+x_gal,y_gal = m(gal_ra,gal_dec)
+i_gal = np.argsort(x_gal)
+x_gal,y_gal = x_gal[i_gal],y_gal[i_gal]
+xy_e = xy_e[i_gal]
+xy_e[xy_e>3.5] = 3.5
+#xy_e[(xy_e>2)*(xy_e<5)] = 2
+xy_e[(xy_e<1)] = 0
+m.scatter(x_gal,y_gal,marker='.',c=xy_e, s=5,lw=1, alpha=0.4,cmap=plt.cm.afmhot_r)
+plt.clim(0,4)
+#m.plot(x_gal,y_gal,'.',c=xy_e, lw=1, alpha=0.01, label='MW')
+
+'''
 gal_lon = np.linspace(0,360,500)
 gal_lat = np.zeros(500)
 c = SkyCoord(l=gal_lon*units.degree, b=gal_lat*units.degree, frame='galactic')
@@ -72,11 +91,11 @@ x_gal,y_gal = m(gal_ra,gal_dec)
 i_gal = np.argsort(x_gal)
 x_gal,y_gal = x_gal[i_gal],y_gal[i_gal]
 m.plot(x_gal,y_gal,'-',c='firebrick', lw=1, alpha=1, label='MW')
-
+'''
 
 # SDSS points
 x_sdss,y_sdss = m(AR,DEC)
-m.scatter(x_sdss,y_sdss,marker='s',c='silver', s=5,lw=1, alpha=1, label='SDSS-DR15')
+m.scatter(x_sdss,y_sdss,marker='s',c='silver', s=5,lw=1, alpha=0.2, label='SDSS-DR15')
 
 # Stripe82 region
 c_s = 'seagreen'#'indianred'
@@ -97,20 +116,9 @@ box_region(m, 208., 221., 51., 58., facecolor=c_c, edgecolor=c_c, alpha=0.7, lw=
 box_region(m, 330., 336., -1., 5., facecolor=c_c, edgecolor=c_c, alpha=0.7, lw=2)
 
 
+
+
+
 plt.xlabel('Equatorial ($\\alpha$, $\\delta$)', fontsize=12)
 plt.legend(loc=4, fontsize=10,framealpha=1)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

@@ -17,7 +17,7 @@ Msun = 1.989e30 	# Solar mass (kg)
 
 class Profile(object):
 
-	def __init__(self, cat, rin_Mpc=0.1, rout_Mpc=10., bins=10, space='log', cosmo=cosmo, boot_flag=True):
+	def __init__(self, cat, rin_Mpc=0.1, rout_Mpc=10., bins=10, space='log', cosmo=cosmo, boot_flag=True, boot_n=100):
 		# Define some parameters...
 		self.set_Mpc_scale(dl=cat['DL'].to_numpy())
 		self.set_sigma_critic(dl=cat['DL'].to_numpy(),
@@ -71,7 +71,7 @@ class Profile(object):
 
 			if boot_flag:
 				err_t, err_x = _boot_error(et[mask]*self.sigma_critic[mask],
-								ex[mask]*self.sigma_critic[mask], weight, 100)
+								ex[mask]*self.sigma_critic[mask], weight, boot_n)
 				self.shear_error[i] = err_t  / m_cal[i]
 				self.cero_error[i] = err_x / m_cal[i]
 
