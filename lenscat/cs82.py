@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from astropy.io import fits
 import h5py
-from tools import Survey, classonly, read_columns, cat_paths
+from main import Survey, classonly, read_columns, cat_paths
 
 
 class CS82(Survey):
