@@ -18,18 +18,20 @@ Msun = 1.989e30 	# Solar mass (kg)
 class Profile(object):
 
 	def __init__(self, cat, rin_Mpc=0.1, rout_Mpc=10., bins=10, space='log', cosmo=cosmo, boot_flag=True, boot_n=100):
+		
+		if isinstance(cat, pd.DataFrame):
+			cat = cat.to_numpy()
+
 		# Define some parameters...
-		self.set_Mpc_scale(dl=cat['DL'].to_numpy())
-		self.set_sigma_critic(dl=cat['DL'].to_numpy(),
-							  ds=cat['DS'].to_numpy(),
-							  dls=cat['DLS'].to_numpy())
+		self.set_Mpc_scale(dl=cat['DL'])
+		self.set_sigma_critic(dl=cat['DL'], ds=cat['DS'], dls=cat['DLS'])
 
 		# Compute distance and ellipticity components...
-		dist, theta = gentools.sphere_angular_vector(cat['RAJ2000'].to_numpy(), cat['DECJ2000'].to_numpy(),
-													cat['RA'].to_numpy(), cat['DEC'].to_numpy(), units='deg')
+		dist, theta = gentools.sphere_angular_vector(cat['RAJ2000'], cat['DECJ2000'],
+													cat['RA'], cat['DEC'], units='deg')
 		theta += 90. #np.pi/2.
 		dist_Mpc = dist*3600.*self.Mpc_scale # distance to the lens in Mpc
-		et, ex = gentools.polar_rotation(cat['e1'].to_numpy(), cat['e2'].to_numpy(), np.deg2rad(theta))
+		et, ex = gentools.polar_rotation(cat['e1'], cat['e2'], np.deg2rad(theta))
 
 		# Create bins...
 		if type(bins)==int:
@@ -59,8 +61,8 @@ class Profile(object):
 			mask = digit==i
 			self.N[i] = mask.sum()
 			if self.N[i]==0: continue
-			weight = cat['weight'][mask].to_numpy()/self.sigma_critic[mask]**2
-			m_cal[i] = 1 + np.average(cat['m'][mask].to_numpy(), weights=weight)
+			weight = cat['weight'][mask]/self.sigma_critic[mask]**2
+			m_cal[i] = 1 + np.average(cat['m'][mask], weights=weight)
 
 			self.shear[i] = np.average(et[mask]*self.sigma_critic[mask], weights=weight) / m_cal[i]
 			self.cero[i]  = np.average(ex[mask]*self.sigma_critic[mask], weights=weight) / m_cal[i]
