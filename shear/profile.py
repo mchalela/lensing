@@ -30,9 +30,7 @@ class Profile(object):
 		theta += 90. #np.pi/2.
 		dist_Mpc = dist*3600.*self.Mpc_scale # distance to the lens in Mpc
 		et, ex = gentools.polar_rotation(cat['e1'].to_numpy(), cat['e2'].to_numpy(), np.deg2rad(theta))
-		self.et = et
-		self.ex = ex
-		self.dist = dist_Mpc
+
 		# Create bins...
 		if type(bins)==int:
 			if space=='log':
@@ -46,7 +44,7 @@ class Profile(object):
 
 		nbin = len(self.bins)-1
 		digit = np.digitize(dist_Mpc, bins=self.bins)-1
-		plt.hist(dist_Mpc,50)
+	
 		self.r_Mpc = 0.5 * (self.bins[:-1] + self.bins[1:])
 		self.shear = np.zeros(nbin, dtype=float)
 		self.cero = np.zeros(nbin, dtype=float)
@@ -92,13 +90,12 @@ class Profile(object):
 		index=np.arange(len(shear))
 		with NumpyRNGContext(1):
 			bootresult = bootstrap(index, nboot)
-		INDEX=bootresult.astype(int)
-		shear_boot  = shear[INDEX]	
-		cero_boot   = cero[INDEX]	
-		weight_boot = weight[INDEX]	
-		shear_means=np.average(shear_boot, weights=weight_boot, axis=1)
-		cero_means=np.average(cero_boot, weights=weight_boot, axis=1)
-		del bootresult
+		index_boot  = bootresult.astype(int)
+		shear_boot  = shear[index_boot]	
+		cero_boot   = cero[index_boot]	
+		weight_boot = weight[index_boot]	
+		shear_means = np.average(shear_boot, weights=weight_boot, axis=1)
+		cero_means  = np.average(cero_boot, weights=weight_boot, axis=1)
 		return np.std(shear_means), np.std(cero_means)
 
 
