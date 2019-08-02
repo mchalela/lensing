@@ -35,7 +35,7 @@ class CFHT(Survey):
 		
 		# Additive correction, see Heymans et al (2012) section 4.1
 		cls.data['e2'] -= cls.data['c2']
-		cls.data.drop(columns='c2')
+		cls.data.drop(columns='c2', inplace=True)
 
 		# Science cuts...
 		# fitclass=0 for galaxies
