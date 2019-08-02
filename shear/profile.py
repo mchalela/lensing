@@ -30,7 +30,9 @@ class Profile(object):
 		theta += 90. #np.pi/2.
 		dist_Mpc = dist*3600.*self.Mpc_scale # distance to the lens in Mpc
 		et, ex = gentools.polar_rotation(cat['e1'].to_numpy(), cat['e2'].to_numpy(), np.deg2rad(theta))
-
+		self.et = et
+		self.ex = ex
+		self.dist = dist_Mpc
 		# Create bins...
 		if type(bins)==int:
 			if space=='log':
@@ -44,7 +46,7 @@ class Profile(object):
 
 		nbin = len(self.bins)-1
 		digit = np.digitize(dist_Mpc, bins=self.bins)-1
-
+		plt.hist(dist_Mpc,50)
 		self.r_Mpc = 0.5 * (self.bins[:-1] + self.bins[1:])
 		self.shear = np.zeros(nbin, dtype=float)
 		self.cero = np.zeros(nbin, dtype=float)
@@ -53,13 +55,13 @@ class Profile(object):
 		self.stat_error = np.zeros(nbin, dtype=float)
 
 		m_cal = np.ones(nbin, float)
-		N = np.zeros(nbin, int)
+		self.N = np.zeros(nbin, int)
 
 		for i in range(nbin):
 			mask = digit==i
-			N[i] = mask.sum()
-			if N[i]==0: continue
-			weight = cat['weight'][mask].to_numpy()
+			self.N[i] = mask.sum()
+			if self.N[i]==0: continue
+			weight = cat['weight'][mask].to_numpy()/self.sigma_critic[mask]**2
 			m_cal[i] = 1 + np.average(cat['m'][mask].to_numpy(), weights=weight)
 
 			self.shear[i] = np.average(et[mask]*self.sigma_critic[mask], weights=weight) / m_cal[i]
