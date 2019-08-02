@@ -34,9 +34,9 @@ class Profile(object):
 		# Create bins...
 		if type(bins)==int:
 			if space=='log':
-				self.bins = np.geomspace(rin_Mpc, rout_Mpc, bins)
+				self.bins = np.geomspace(rin_Mpc, rout_Mpc, bins+1)
 			else:
-				self.bins = np.linspace(rin_Mpc, rout_Mpc, bins)
+				self.bins = np.linspace(rin_Mpc, rout_Mpc, bins+1)
 		else:
 			self.bins = bins
 			rin_Mpc  = self.bins[0]
@@ -88,7 +88,7 @@ class Profile(object):
 
 	def _boot_error(self, shear, cero, weight, nboot):
 		index=np.arange(len(shear))
-		with NumpyRNGContext(1):
+		with NumpyRNGContext(seed=1):
 			bootresult = bootstrap(index, nboot)
 		index_boot  = bootresult.astype(int)
 		shear_boot  = shear[index_boot]	
