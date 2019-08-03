@@ -6,7 +6,7 @@ from astropy.table import Table
 from astropy.stats import bootstrap
 from astropy.utils import NumpyRNGContext
 from astropy.cosmology import LambdaCDM
-from lensing.gentools import classonly
+from lensing import gentools 
 
 cosmo = LambdaCDM(H0=70, Om0=0.3, Ode0=0.7)
 cvel = 299792458. 	# Speed of light (m.s-1)
@@ -137,7 +137,7 @@ class Profile(object):
 			np.savetxt(f, p, fmt=['%12.6f']*6+['%8i'])		
 		return None
 
-	@classonly
+	@gentools.classonly
 	def read_profile(self, file, colnames=True):
 		''' Read profile written with write_to() method
 		'''
