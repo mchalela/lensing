@@ -143,8 +143,11 @@ class Profile(object):
 		''' Read profile written with write_to() method
 		'''
 
-		with open(file, 'r') as f:
-			pf = np.genfromtxt(f, dtype=None, names=colnames)
+		with open(file,'r') as f:
+			for i, line in enumerate(f):
+				if not line.startswith('#'): break
+			f.seek(0,0)
+			pf = np.genfromtxt(f, dtype=None, names=colnames, skip_header=i)
 
 		p = Profile()
 		p['r_hMpc'] = pf['r_hMpc']
