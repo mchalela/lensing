@@ -6,7 +6,7 @@ from grispy import GriSPy
 import itertools
 from astropy.io import fits
 from astropy.table import Table
-
+from lensing.gentools import classonly
 '''
 Que tipo de comportamiento espero?
 
@@ -68,11 +68,6 @@ class cat_paths:
 			'W3': os.path.join(p,'CFHT','CFHTLens_W3.h5'),
 			'W4': os.path.join(p,'CFHT','CFHTLens_W4.h5')}
 
-
-class classonly(classmethod):
-    def __get__(self, obj, type):
-        if obj: raise AttributeError
-        return super(classonly, self).__get__(obj, type)
 
 def read_columns(hdf5file, columns):
 	'''Read catalogue columns into pandas DataFrame
