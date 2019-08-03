@@ -32,7 +32,7 @@ class Profile(object):
 
 		if cat is not None:
 			if isinstance(cat, pd.DataFrame):
-				cat = cat.to_numpy()
+				cat = cat.to_records()
 
 			# Define some parameters...
 			Mpc_scale = self.set_Mpc_scale(dl=cat['DL'])
