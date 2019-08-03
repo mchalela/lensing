@@ -17,7 +17,7 @@ Msun = 1.989e30 	# Solar mass (kg)
 
 class Profile(object):
 
-	def __init__(self, cat, rin_Mpc=0.1, rout_Mpc=10., bins=10, space='log', cosmo=cosmo, boot_flag=True, boot_n=100):
+	def __init__(self, cat, rin_hMpc=0.1, rout_hMpc=10., bins=10, space='log', cosmo=cosmo, boot_flag=True, boot_n=100):
 		
 		if isinstance(cat, pd.DataFrame):
 			cat = cat.to_numpy()
@@ -30,24 +30,24 @@ class Profile(object):
 		dist, theta = gentools.sphere_angular_vector(cat['RAJ2000'], cat['DECJ2000'],
 													cat['RA'], cat['DEC'], units='deg')
 		theta += 90. #np.pi/2.
-		dist_Mpc = dist*3600.*self.Mpc_scale # distance to the lens in Mpc
+		dist_hMpc = dist*3600.*self.Mpc_scale*cosmo.h # distance to the lens in Mpc/h
 		et, ex = gentools.polar_rotation(cat['e1'], cat['e2'], np.deg2rad(theta))
 
 		# Create bins...
 		if type(bins)==int:
 			if space=='log':
-				self.bins = np.geomspace(rin_Mpc, rout_Mpc, bins+1)
+				self.bins = np.geomspace(rin_hMpc, rout_hMpc, bins+1)
 			else:
-				self.bins = np.linspace(rin_Mpc, rout_Mpc, bins+1)
+				self.bins = np.linspace(rin_hMpc, rout_hMpc, bins+1)
 		else:
 			self.bins = bins
-			rin_Mpc  = self.bins[0]
-			rout_Mpc = self.bins[-1]
+			rin_hMpc  = self.bins[0]
+			rout_hMpc = self.bins[-1]
 
 		nbin = len(self.bins)-1
-		digit = np.digitize(dist_Mpc, bins=self.bins)-1
+		digit = np.digitize(dist_hMpc, bins=self.bins)-1
 	
-		self.r_Mpc = 0.5 * (self.bins[:-1] + self.bins[1:])
+		self.r_hMpc = 0.5 * (self.bins[:-1] + self.bins[1:])
 		self.shear = np.zeros(nbin, dtype=float)
 		self.cero = np.zeros(nbin, dtype=float)
 		self.shear_error = np.zeros(nbin, dtype=float)
@@ -78,7 +78,9 @@ class Profile(object):
 				self.shear_error[i] = err_t  / m_cal[i]
 				self.cero_error[i] = err_x / m_cal[i]
 
-		
+	def __getitem__(self, key):
+		return getattr(self, key)
+
 	def set_Mpc_scale(self, dl):
 		self.Mpc_scale = dl*np.deg2rad(1./3600.)
 		return None
@@ -100,4 +102,29 @@ class Profile(object):
 		cero_means  = np.average(cero_boot, weights=weight_boot, axis=1)
 		return np.std(shear_means), np.std(cero_means)
 
+	def write_to(self, file, header=None, colnames=True):
+		'''Add a header to lensing.shear.Profile output file
+		to know the sample parameters used to build it.
+		
+		 file: 	 (str) Name of output file
+		 header: (dic) Dictionary with parameter cuts. Optional.
+	            Example: {'z_min':0.1, 'z_max':0.3, 'odds_min':0.5}
+		'''
 
+		with open(file, 'a') as f:
+			f.write('# '+'-'*48+'\n')
+			f.write('# Lensing profile '+'\n')
+			if header is not None:
+				for key, value in header.items():
+					f.write('# '+key.ljust(14)+' = '+str(value) +'\n')
+
+			f.write('# '+'\n')
+			f.write('# '+datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')+'\n')
+			f.write('# '+'-'*48+'\n')
+
+			C = ' ' if colnames else '# '
+			f.write(C+'r_hMpc, shear, shear_error, cero, cero_error, stat_error \n')
+			p = np.column_stack((self.r_hMpc, self.shear, self.shear_error,
+								 self.cero, self.cero_error, self.stat_error))
+			np.savetxt(f, p, fmt=['%12.6f']*6)		
+		return None
