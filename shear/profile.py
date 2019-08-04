@@ -150,11 +150,11 @@ class Profile(object):
 			pf = np.genfromtxt(f, dtype=None, names=colnames, skip_header=i)
 
 		p = Profile()
-		p['r_hMpc'] = pf['r_hMpc']
-		p['shear'] = pf['shear']
-		p['cero'] = pf['cero']
-		p['shear_error'] = pf['shear_error']
-		p['cero_error'] = pf['cero_error']
-		p['stat_error'] = pf['stat_error']
-		p['N'] = pf['N']
+		p.r_hMpc = pf['r_hMpc']
+		p.shear = pf['shear']
+		p.cero = pf['cero']
+		p.shear_error = pf['shear_error']
+		p.cero_error = pf['cero_error']
+		p.stat_error = pf['stat_error']
+		p.N = pf['N']
 		return p
