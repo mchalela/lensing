@@ -109,7 +109,7 @@ class Profile(object):
 		cero_means  = np.average(cero_boot, weights=weight_boot, axis=1)
 		return np.std(shear_means), np.std(cero_means)
 
-	def write_to(self, file, header=None, colnames=True):
+	def write_to(self, file, header=None, colnames=True, overwrite=False):
 		'''Add a header to lensing.shear.Profile output file
 		to know the sample parameters used to build it.
 		
@@ -119,6 +119,11 @@ class Profile(object):
 	     colnames:  (bool) Flag to write columns names as first line.
 	     		If False, column names are commented.
 		'''
+		if os.path.isfile(file):
+			if overwrite:
+				os.remove(file)
+			else:
+				raise IOError('File already exist. You may want to use overwrite=True.')
 
 		with open(file, 'a') as f:
 			f.write('# '+'-'*48+'\n')
