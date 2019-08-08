@@ -2,8 +2,6 @@ import os, platform
 import datetime
 import numpy as np
 import pandas as pd
-from astropy.io import fits
-from astropy.table import Table
 from astropy.stats import bootstrap
 from astropy.utils import NumpyRNGContext
 from astropy.cosmology import LambdaCDM
@@ -127,6 +125,7 @@ class Profile(object):
 
 		with open(file, 'a') as f:
 			f.write('# '+'-'*48+'\n')
+			f.write('# '+'\n')
 			f.write('# Lensing profile '+'\n')
 			if header is not None:
 				for key, value in header.items():
