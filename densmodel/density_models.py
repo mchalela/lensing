@@ -454,7 +454,7 @@ z=0.3
 M200=2.e14
 disp_off=0.2
 p=0.7
-r0 = np.geomspace(0.1,20.,20)
+r0 = np.geomspace(0.1,10.,20)
 
 density = Density(Planck15)
 if False:
