@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt ; plt.ion()
 import multiprocessing
 
 import emcee
-import corner
+#import corner
 from astropy import units
 from astropy.cosmology import Planck15 #, LambdaCDM
 from lensing import shear, densmodel
@@ -15,7 +15,9 @@ from lensing import shear, densmodel
 name = 'bin4_COMB'
 z=0.25
 offset = 0.4	# in Mpc/h
-profile = shear.Profile.read_profile('/home/martin/Documentos/Doctorado/Lentes/lensing/redMapper_test/redMapper_COMB.profile')
+#path = '/home/martin/Documentos/Doctorado/Lentes/lensing/redMapper_test/redMapper_COMB.profile'
+path = '/home/mchalela/redMaPPer/redMapper_COMB.profile'
+profile = shear.Profile.read_profile(path)
 rbins = profile['r_hMpc']		# R in Mpc/h
 shear_obs = profile['shear'] / 0.7	# Density contrast in h*Msun/pc2
 shear_err = profile['shear_error'] / 0.7

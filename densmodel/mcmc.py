@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt ; plt.ion()
 import multiprocessing
 
 import emcee
-import corner
+#import corner
 from astropy import units
 from astropy.cosmology import Planck15 #, LambdaCDM
 from lensing.densmodel import Density
