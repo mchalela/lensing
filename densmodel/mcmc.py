@@ -164,15 +164,16 @@ def mcmc_create_samples(args, ndim=3, nwalkers=15, steps=300, file_name='default
 	#	sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_fix_off, 
 	#                                args=(offset, z, rbins, model_obs, yerr), threads=threads)
 	if ndim == 2:
-		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_fix_off, args=args, threads=threads)
+		with multiprocessing.Pool() as pool:
+			sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_fix_off, args=args)#, threads=threads)
+			# the MCMC chains take some time: about 49 minutes for the 500 samples below
+			t0 = time.time()
+			pos, prob, state = sampler.run_mcmc(p0, steps)
+			print 'Tiempo: ', (time.time()-t0)/60., '   ', file_name
+			samples = sampler.chain.reshape((-1, ndim))
+
 	elif ndim == 3:
 		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=args, threads=threads)
-
-	# the MCMC chains take some time: about 49 minutes for the 500 samples below
-	t0 = time.time()
-	pos, prob, state = sampler.run_mcmc(p0, steps)
-	print 'Tiempo: ', (time.time()-t0)/60., '	', file_name
-	samples = sampler.chain.reshape((-1, ndim))
 	# save the chain for later
 	np.savetxt(samples_file, samples)
 
