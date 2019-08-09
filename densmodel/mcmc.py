@@ -111,9 +111,9 @@ def lnlike_fix_off(theta, offset, z, rbins, data, stddev):
     
     # calculate the model
     nfw_model = DM.NFW(r_h=rbins, z=z, M200_h=10**logm)
-    #model = nfw_model
-    nfwoff_model = DM.NFWoff(r_h=rbins, z=z, M200_h=10**logm, disp_offset_h=offset)
-    model = p*nfw_model + (1-p)*nfwoff_model
+    model = nfw_model
+    #nfwoff_model = DM.NFWoff(r_h=rbins, z=z, M200_h=10**logm, disp_offset_h=offset)
+    #model = p*nfw_model + (1-p)*nfwoff_model
     
     #c = ClusterEnsemble(z)
     #c.m200 = [10 ** logm]
@@ -131,8 +131,8 @@ def lnprior_fix_off(theta):
     #    return 0.0
     #else:
     #    return -np.inf
-    #process = multiprocessing.current_process()
-    #print process.pid
+    process = multiprocessing.current_process()
+    print process.pid
     #print ' Model: logm = ',logm,'	-	p = ',p,'	-	offset = ',offset
     if 12. < logm < 16. and 0.0 < p <=1.:
         return 0.0
@@ -265,31 +265,31 @@ z = 0.249 #0.23
 
 
 nwalkers=10
-steps=500
-ndim=3
+steps=300
+ndim=2
 # read in a previously generated chain
-samples_file = 'samples_dim.10.500.3.'+name+'.txt'
+samples_file = 'samples_dim.10.300.2.'+name+'.txt'
 samplesf = np.loadtxt(samples_file)
 sampler_chain = samplesf.reshape((nwalkers,steps,ndim))
 
 if i_can_wait:
     fig, axes = plt.subplots(3, 1, sharex=True, figsize=(8, 6))
     axes[0].plot(sampler_chain[:, :, 0].T, color="k", alpha=0.4)
-    axes[0].axhline(logm_true, color="g", lw=2)
+    #axes[0].axhline(logm_true, color="g", lw=2)
     axes[0].set_ylabel("log-mass")
 
     axes[1].plot(sampler_chain[:, :, 1].T, color="k", alpha=0.4)
-    axes[1].axhline(p_true, color="g", lw=2)
+    #axes[1].axhline(p_true, color="g", lw=2)
     axes[1].set_ylabel("p")
     axes[1].set_xlabel("step number")
 
     axes[2].plot(sampler_chain[:, :, 2].T, color="k", alpha=0.4)
-    axes[2].axhline(offset_true, color="g", lw=2)
+    #axes[2].axhline(offset_true, color="g", lw=2)
     axes[2].set_ylabel("offset")
     axes[2].set_xlabel("step number")    
 
 if i_can_wait:
-	burn_in_step = 100  # based on a rough look at the walker positions above
+	burn_in_step = 50  # based on a rough look at the walker positions above
 	samples = sampler_chain[:, burn_in_step:, :].reshape((-1, ndim))
 	# save the chain for later
 	np.savetxt('samples.txt', samples)
