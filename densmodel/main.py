@@ -10,7 +10,7 @@ from astropy import units
 from astropy.cosmology import Planck15 #, LambdaCDM
 from lensing import shear, densmodel
 
-
+ncores = multiprocessing.cpu_count()
 
 name = 'bin4_paralleltest'
 z=0.25
@@ -24,14 +24,13 @@ shear_err = profile['shear_error'] / 0.7
 args_fix_off=(offset, z, rbins, shear_obs, shear_err)
 args_fix_none=(z, rbins, shear_obs, shear_err)
 print 'Ndim 2'
-mcmc_create_samples(args=args_fix_off, ndim=2, nwalkers=10, steps=5, file_name=name, threads=26)
-#densmodel.mcmc.mcmc_create_samples(args=args_fix_off, ndim=2, nwalkers=10, steps=300, file_name=name)#, threads=32)
+densmodel.mcmc.mcmc_create_samples(args=args_fix_off, ndim=2, nwalkers=ncores, steps=150, file_name=name)
 samples_file = 'samples_dim.10.300.2.'+name+'.txt'
 print 'Ndim 3'
-densmodel.mcmc.mcmc_create_samples(args=args_fix_none, ndim=3, nwalkers=10, steps=300, file_name=name, threads=56)
+densmodel.mcmc.mcmc_create_samples(args=args_fix_none, ndim=3, nwalkers=ncores, steps=150, file_name=name)
 samples_file = 'samples_dim.10.300.3.'+name+'.txt'
 
-
+'''
 p=0.7
 DM = densmodel.Density(Planck15)
 nfw_model = DM.NFW(r_h=rbins, z=z, M200_h=2.5*10**14.)
@@ -113,3 +112,4 @@ plt.legend()
 plt.title(M_label)
 plt.xlabel('r [Mpc$\,h^{-1}$]')
 plt.ylabel(u'$\Delta\Sigma [h\,M_{\odot}\,pc^{-2}]$')
+'''

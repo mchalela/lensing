@@ -202,7 +202,7 @@ class Density:
 		'''
 
 		# These are for the integration
-		if self.J2 == None:
+		if self.J2 is None:
 			self._set_secondhalo_params(r_h, z=z)			
 		#kh_min = 1e-4
 		#kh_max = 1e4
