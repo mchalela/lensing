@@ -3,6 +3,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt ; plt.ion()
 import multiprocessing
+from contextlib import closing
 
 import emcee
 #import corner
@@ -149,7 +150,7 @@ def lnprob_fix_off(theta, offset, z, rbins, data, stddev):
 
 #####################################################################
 #--------------------------------------------------------------------
-def mcmc_create_samples(args, ndim=3, nwalkers=15, steps=300, file_name='default', threads=4):
+def mcmc_create_samples(args, ndim=3, nwalkers=10, steps=200, file_name='default'):
 
 	#Sample the posterior using emcee
 	#ndim = 
@@ -161,19 +162,20 @@ def mcmc_create_samples(args, ndim=3, nwalkers=15, steps=300, file_name='default
 	p0[:,0] = p0[:,0] + 14.  # start somewhere close to true logm ~ 14
 	#p0[:,0] = p0[:,0] + 13.5  # start somewhere close to true logm ~ 14
 
-	#	sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_fix_off, 
-	#                                args=(offset, z, rbins, model_obs, yerr), threads=threads)
 	if ndim == 2:
-		with multiprocessing.Pool() as pool:
-			sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_fix_off, args=args)#, threads=threads)
-			# the MCMC chains take some time: about 49 minutes for the 500 samples below
-			t0 = time.time()
-			pos, prob, state = sampler.run_mcmc(p0, steps)
-			print 'Tiempo: ', (time.time()-t0)/60., '   ', file_name
-			samples = sampler.chain.reshape((-1, ndim))
-
+		lnprob_fn = lnprob_fix_off
 	elif ndim == 3:
-		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=args, threads=threads)
+		lnprob_fn = lnprob
+	
+	with closing(Pool()) as pool:
+		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_fn, args=args, pool=pool)
+		# the MCMC chains take some time: about 49 minutes for the 500 samples below
+		t0 = time.time()
+		pos, prob, state = sampler.run_mcmc(p0, steps)
+		print 'Tiempo: ', (time.time()-t0)/60., '   ', file_name
+		samples = sampler.chain.reshape((-1, ndim))
+		pool.terminate()
+
 	# save the chain for later
 	np.savetxt(samples_file, samples)
 

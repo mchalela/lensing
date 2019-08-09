@@ -2,7 +2,7 @@ import os
 import time
 import numpy as np
 #import matplotlib.pyplot as plt ; plt.ion()
-#import multiprocessing
+import multiprocessing
 
 import emcee
 #import corner
@@ -12,11 +12,11 @@ from lensing import shear, densmodel
 
 
 
-name = 'bin4_COMB'
+name = 'bin4_paralleltest'
 z=0.25
 offset = 0.4	# in Mpc/h
-path = '/home/martin/Documentos/Doctorado/Lentes/lensing/redMapper_test/redMapper_COMB.profile'
-#path = '/home/mchalela/redMaPPer/redMapper_COMB.profile'
+#path = '/home/martin/Documentos/Doctorado/Lentes/lensing/redMapper_test/redMapper_COMB.profile'
+path = '/home/mchalela/redMaPPer/redMapper_COMB.profile'
 profile = shear.Profile.read_profile(path)
 rbins = profile['r_hMpc']		# R in Mpc/h
 shear_obs = profile['shear'] / 0.7	# Density contrast in h*Msun/pc2
@@ -24,7 +24,8 @@ shear_err = profile['shear_error'] / 0.7
 args_fix_off=(offset, z, rbins, shear_obs, shear_err)
 args_fix_none=(z, rbins, shear_obs, shear_err)
 print 'Ndim 2'
-densmodel.mcmc.mcmc_create_samples(args=args_fix_off, ndim=2, nwalkers=10, steps=300, file_name=name, threads=4)
+mcmc_create_samples(args=args_fix_off, ndim=2, nwalkers=10, steps=5, file_name=name, threads=26)
+#densmodel.mcmc.mcmc_create_samples(args=args_fix_off, ndim=2, nwalkers=10, steps=300, file_name=name)#, threads=32)
 samples_file = 'samples_dim.10.300.2.'+name+'.txt'
 print 'Ndim 3'
 densmodel.mcmc.mcmc_create_samples(args=args_fix_none, ndim=3, nwalkers=10, steps=300, file_name=name, threads=56)
@@ -44,11 +45,11 @@ plt.plot(rbins, shear_obs,'bx')
 
 
 i_can_wait = True
-nwalkers=10
+nwalkers=4
 steps=300
 ndim=2
 # read in a previously generated chain
-samples_file = 'samples_dim.10.300.2.'+name+'.txt'
+samples_file = 'samples_dim.4.300.2.'+name+'.txt'
 samplesf = np.loadtxt(samples_file)
 sampler_chain = samplesf.reshape((nwalkers,steps,ndim))
 

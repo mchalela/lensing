@@ -6,7 +6,7 @@ import numpy as np
 from scipy.integrate import quad, simps
 from scipy.interpolate import CubicSpline
 import scipy.special as sp
-#import camb
+import camb
 import math
 
 cvel= 299792458.		# Speed of light (m.s-1)
