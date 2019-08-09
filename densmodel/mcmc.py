@@ -2,7 +2,7 @@ import os
 import time
 import numpy as np
 import matplotlib.pyplot as plt ; plt.ion()
-import multiprocessing
+import multiprocessing 
 from contextlib import closing
 
 import emcee
@@ -167,7 +167,7 @@ def mcmc_create_samples(args, ndim=3, nwalkers=10, steps=200, file_name='default
 	elif ndim == 3:
 		lnprob_fn = lnprob
 	
-	with closing(Pool()) as pool:
+	with closing(multiprocessing.Pool()) as pool:
 		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_fn, args=args, pool=pool)
 		# the MCMC chains take some time: about 49 minutes for the 500 samples below
 		t0 = time.time()
