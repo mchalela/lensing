@@ -111,9 +111,9 @@ def lnlike_fix_off(theta, offset, z, rbins, data, stddev):
     
     # calculate the model
     nfw_model = DM.NFW(r_h=rbins, z=z, M200_h=10**logm)
-    model = nfw_model
-    #nfwoff_model = DM.NFWoff(r_h=rbins, z=z, M200_h=10**logm, disp_offset_h=offset)
-    #model = p*nfw_model + (1-p)*nfwoff_model
+    #model = nfw_model
+    nfwoff_model = DM.NFWoff(r_h=rbins, z=z, M200_h=10**logm, disp_offset_h=offset)
+    model = p*nfw_model + (1-p)*nfwoff_model
     
     #c = ClusterEnsemble(z)
     #c.m200 = [10 ** logm]
