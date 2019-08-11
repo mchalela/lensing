@@ -1,5 +1,5 @@
 import os
-#from astropy.modeling import models, fitting 
+from astropy.modeling import Model, models#, fitting 
 from astropy.cosmology import Planck15 #, LambdaCDM
 from astropy import units
 import numpy as np
@@ -21,8 +21,10 @@ class Density:
 	Module to handle density models and contruct composite models to fit any profile.
 	'''
 
-	def __init__(self, cosmo=None):
-		if cosmo==None:
+	def __init__(self, z, cosmo=None):
+
+		self.z = z
+		if cosmo is None:
 			self.cosmo = Planck15
 			print 'Assuming Planck15 cosmology: ', self.cosmo
 		else:
@@ -30,26 +32,28 @@ class Density:
 
 		self.J2 = None 		# Creates an empty variable for the Bessel function
 
-	def BCG(self, r_h, Mstar_h=1.e13):
+	def BCG(self, r_h, logMstar_h=13.):
 		'''
 		BCG density contrast profile. r_h and Mstar_h must be in Mpc/h and Msun/h respectively
 		'''
+		Mstar_h = 10**logMstar_h
 		rp=r_h*1.e6
 		bcg_density = Mstar_h/(np.pi*rp**2)			# Density contrast in h*Msun/pc2
 		return bcg_density
 
-	def BCG_with_M200(self, r_h, M200_h=1.e13):
+	def BCG_with_M200(self, r_h, logM200_h=13.):
 		'''
 		Wraper to fit the BCG with the M200 of the halo instead of Mstar.
 		We use the scaling relation of Johnston et a. 2007. Section 5.4
 		https://arxiv.org/pdf/0709.1159.pdf
 		'''
+		M200_h = 10**logM200_h
 		p0 = 1.334e12 		# in Msun/h
 		p1 = 6.717e13 		# in Msun/h
 		p2 = -1.380
 		Mstar_h = p0 / (1 + (M200_h/p1)**p2)
 		
-		bcg_density = self.BCG(r_h, Mstar_h=Mstar_h)
+		bcg_density = self.BCG(r_h, logMstar_h=np.log10(Mstar_h))
 		return bcg_density
 
 	def SIS(self, r_h, disp=300.):
@@ -63,17 +67,19 @@ class Density:
 	def SISoff(self):
 		return None
 
-	def NFW(self, r_h, z=0., M200_h=1.e13):
+	def NFW(self, r_h, logM200_h=13.):
 		'''
 		NFW density contrast profile. r_h and M200_h must be in Mpc/h and Msun/h respectively
 		'''
-		rhoc = self.cosmo.critical_density(z).si.value / self.cosmo.h**2	#critical density at z (h2.kg.m-3)
+		M200_h = 10**logM200_h
+
+		rhoc = self.cosmo.critical_density(self.z).si.value / self.cosmo.h**2	#critical density at z (h2.kg.m-3)
 		rhoc_mpc = rhoc * (pc*1.0e6)**3.0
 		
 		R200 = np.cbrt(M200_h*3.0*Msun/(800.0*np.pi*rhoc_mpc))
 		
 		#calculo de c usando la relacion de Duffy et al 2008. https://arxiv.org/pdf/0804.2486.pdf
-		c = 5.71 * (M200_h/2.e12)**-0.084 * (1.+z)**-0.47
+		c = 5.71 * (M200_h/2.e12)**-0.084 * (1.+self.z)**-0.47
 		
 		deltac=(200./3.)*( (c**3) / ( np.log(1.+c)- (c/(1+c)) ))
 		x=(r_h*c)/R200
@@ -96,20 +102,21 @@ class Density:
 		nfw_density = kapak*jota		# Density contrast in h*Msun/pc2
 		return nfw_density
 
-	def NFWoff(self, r_h, z=0., M200_h=1.e13, disp_offset_h=0.1):
+	def NFWoff(self, r_h, logM200_h=13., disp_offset_h=0.1):
 		'''
 		NFW density contrast profile with a gaussian miscentered kernel.
 		r_h and disp_offset_h must be in Mpc/h
 		M200_h must be in Msun/h
 		'''
+		M200_h = 10**logM200_h
 
-		rhoc = self.cosmo.critical_density(z).si.value / self.cosmo.h**2	#critical density at z (h2.kg.m-3)
+		rhoc = self.cosmo.critical_density(self.z).si.value / self.cosmo.h**2	#critical density at z (h2.kg.m-3)
 		rhoc_mpc = rhoc * (pc*1.0e6)**3.0
 		
 		R200 = np.cbrt(M200_h*3.0*Msun/(800.0*np.pi*rhoc_mpc))
 		
 		#calculo de c usando la relacion de Duffy et al 2008. https://arxiv.org/pdf/0804.2486.pdf
-		c = 5.71 * (M200_h/2.e12)**-0.084 * (1.+z)**-0.47
+		c = 5.71 * (M200_h/2.e12)**-0.084 * (1.+self.z)**-0.47
 		
 		rs = R200/c
 		deltac=(200./3.)*( (c**3) / ( np.log(1.+c)- (c/(1+c)) ))	
@@ -166,19 +173,19 @@ class Density:
 			
 		return np.asarray(delta_sigma_off)
 
-	def NFWCombined(self, r_h, z=0., M200_h=1.e13, disp_offset_h=0.1, p_cen=1.):
+	def NFWCombined(self, r_h, logM200_h=13., disp_offset_h=0.1, p_cen=1.):
 		'''
 		Wraper to combine centered and miscentered NFW.
 		r_h and disp_offset_h must be in Mpc/h
 		M200_h must be in Msun/h		
 		'''
-		nfw_cen = self.NFW(r_h, M200_h=M200_h)
-		nfw_off = self.NFWoff(r_h, z=z, M200_h=M200_h, disp_offset_h=disp_offset_h)
+		nfw_cen = self.NFW(r_h, logM200_h=logM200_h)
+		nfw_off = self.NFWoff(r_h, logM200_h=logM200_h, disp_offset_h=disp_offset_h)
 		nfw_combined = p_cen * nfw_cen + (1-p_cen) * nfw_off
 		nfw_combined = nfw_off
 		return nfw_combined
 
-	def _set_secondhalo_params(self, r_h, z=0.):
+	def _set_secondhalo_params(self, r_h):
 		'''
 		Precomputes some parameters
 		'''
@@ -187,8 +194,8 @@ class Density:
 		self.kh_max = 1e4
 		self.kh_bins = np.geomspace(self.kh_min, self.kh_max, kh_npoints, endpoint=True)
 
-		Dang_h = self.cosmo.angular_diameter_distance(z).value * self.cosmo.h 	# in Mpc/h
-		self.l_bins = self.kh_bins * (1+z)*Dang_h
+		Dang_h = self.cosmo.angular_diameter_distance(self.z).value * self.cosmo.h 	# in Mpc/h
+		self.l_bins = self.kh_bins * (1+self.z)*Dang_h
 
 		theta = r_h/Dang_h
 		self.J2 = sp.jn(2, self.l_bins*theta[:,np.newaxis])
@@ -196,14 +203,14 @@ class Density:
 		return None #J2
 
 
-	def SecondHalo(self, r_h, z=0., M200_h=1.e13, Delta=200.):
+	def SecondHalo(self, r_h, logM200_h=13., Delta=200.):
 		'''
 		Computes the second halo term. r_h and M200_h must be in Mpc/h and Msun/h respectively
 		'''
-
+		M200_h = 10**logM200_h
 		# These are for the integration
 		if self.J2 == None:
-			self._set_secondhalo_params(r_h, z=z)			
+			self._set_secondhalo_params(r_h)			
 		#kh_min = 1e-4
 		#kh_max = 1e4
 		#kh_npoints = 1e7 		# Something like 1e7 
@@ -347,19 +354,19 @@ class Density:
 
 
 		# Computes bias factor
-		bias = _bias_factor(M200_h, z, Delta)
+		bias = _bias_factor(M200_h, self.z, Delta)
 
-		Dang_h = self.cosmo.angular_diameter_distance(z).value * self.cosmo.h 	# in Mpc/h
+		Dang_h = self.cosmo.angular_diameter_distance(self.z).value * self.cosmo.h 	# in Mpc/h
 
-		rhoc = self.cosmo.critical_density(z)
+		rhoc = self.cosmo.critical_density(self.z)
 		rhoc = rhoc.to(units.Msun/units.Mpc**3).value / self.cosmo.h**2			#critical density (h^2 Msun Mpc^-3)
-		rhom = rhoc * self.cosmo.Om(z)		#mean density at z	
+		rhom = rhoc * self.cosmo.Om(self.z)		#mean density at z	
 
 		# Constants of the integral (i.e. these factors are not functions of l)
-		cte = rhom * bias / (2*np.pi * (1+z)**3 * Dang_h**2)
+		cte = rhom * bias / (2*np.pi * (1+self.z)**3 * Dang_h**2)
 
 		# Computes matter power spectrum
-		kh_0, Pk_0 = _power_spectrum_camb(z)
+		kh_0, Pk_0 = _power_spectrum_camb(self.z)
 
 		# Interpolates for the actual bins we want
 		cs = CubicSpline(kh_0,Pk_0)
@@ -390,62 +397,69 @@ class Density:
 
 		return second_halo
 
-'''
-class DensityModels:
-	def __init__(self, **cosmo):
-		self.density = Density(**cosmo)
 
-	def BCG(self, Mstar_0=1.e13):
+class DensityModels:
+	def __init__(self, z, cosmo=None):
+		self.density = Density(z, cosmo)
+
+	def BCG(self, logMstar_0=13.):
 		model = models.custom_model(self.density.BCG)
-		init_mod = model(Mstar=Mstar_0)
+		init_mod = model(logMstar_h=logMstar_0, name='BCG')
 		return init_mod
 
-	def BCG_with_M200(self, M200_0=1.e13):
+	def BCG_with_M200(self, logM200_0=13.):
 		model = models.custom_model(self.density.BCG_with_M200)
-		init_mod = model(M200=M200_0)
-		init_mod.M200.bounds = (1.e10, 1e16)
+		init_mod = model(logM200_h=logM200_0, name='BCG_with_M200')
+		init_mod.logM200_h.bounds = (10., 16.)
 		return init_mod
 
 	def SIS(self, disp_0=300.):
 		model = models.custom_model(self.density.SIS)
-		init_mod = model(disp=disp_0)
+		init_mod = model(disp=disp_0, name='SIS')
+		init_mod.disp.bounds = (0., 2000.)
 		return init_mod
 
-	def NFW(self, M200_0=1.e13):
+	def NFW(self, logM200_0=13.):
 		model = models.custom_model(self.density.NFW)
-		init_mod = model(M200=M200_0)
-		init_mod.M200.bounds = (1.e10, 1e16)
-		return init_mod	 
+		init_mod = model(logM200_h=logM200_0, name='NFW')
+		init_mod.logM200_h.bounds = (10., 16.)
+		return init_mod
 
-	def NFWCombined(self, z_fix=-1., M200_0=1.e13, disp_offset_0=0.1, p_cen_0=1.):
-
-		if (z_fix < 0):
-			raise Exception('You need to send a positive value of redshift z_fix.')
+	def NFWCombined(self, logM200_0=13., disp_offset_0=0.1, p_cen_0=1.):
 
 		model = models.custom_model(self.density.NFWCombined)
-		init_mod = model(z=z_fix, M200=M200_0, disp_offset=disp_offset_0, p_cen=p_cen_0)
+		init_mod = model(logM200_h=logM200_0, disp_offset=disp_offset_0, p_cen=p_cen_0, name='NFWCombined')
 
 		# Constraints
-		init_mod.z.fixed = True	
-		init_mod.p_cen.bounds = (0., 1.)
+		init_mod.logM200_h.bounds = (10., 16.)	
 		init_mod.disp_offset.bounds = (0., 1.)
+		init_mod.p_cen.bounds = (0., 1.)
 		return init_mod		
 
-	def SecondHalo(self, z_fix=-1., M200_0=1.e13, Delta_fix=200):
-		
-		if (z_fix < 0):
-			raise Exception('You need to send a positive value of redshift z_fix.')
+	def SecondHalo(self, logM200_0=13., Delta_fix=200.):
 		
 		model = models.custom_model(self.density.SecondHalo)
-		init_mod = model(z=z_fix, M200=M200_0, Delta=Delta_fix)
+		init_mod = model(logM200_h=logM200_0, Delta=Delta_fix, name='SecondHalo')
 
 		# Constraints
-		init_mod.z.fixed = True
 		init_mod.Delta.fixed = True		# Fix Delta
-		init_mod.M200.bounds = (1.e10, 1e16)
+		init_mod.logM200_h.bounds = (10., 16.)
 		return init_mod	
 
-'''
+	def AddModels(self, model_list):
+
+		total_model = model_list[0]
+		for m in model_list[1:]:
+			total_model += m
+		total_model.name = '+'.join(total_model.submodel_names)
+
+		if 'logM200_h_0' in total_model.param_names:
+			tied_M200 = lambda M: total_model.logM200_h_0
+			total_model.logM200_h_1.tied = tied_M200
+		return total_model
+
+
+
 
 
 # Probamos...
