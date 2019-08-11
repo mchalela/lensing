@@ -428,11 +428,11 @@ class DensityModels:
 	def NFWCombined(self, logM200_0=13., disp_offset_0=0.1, p_cen_0=1.):
 
 		model = models.custom_model(self.density.NFWCombined)
-		init_mod = model(logM200_h=logM200_0, disp_offset=disp_offset_0, p_cen=p_cen_0, name='NFWCombined')
+		init_mod = model(logM200_h=logM200_0, disp_offset_h=disp_offset_0, p_cen=p_cen_0, name='NFWCombined')
 
 		# Constraints
 		init_mod.logM200_h.bounds = (10., 16.)	
-		init_mod.disp_offset.bounds = (0., 1.)
+		init_mod.disp_offset_h.bounds = (0., 1.)
 		init_mod.p_cen.bounds = (0., 1.)
 		return init_mod		
 
@@ -453,9 +453,16 @@ class DensityModels:
 			total_model += m
 		total_model.name = '+'.join(total_model.submodel_names)
 
-		if 'logM200_h_0' in total_model.param_names:
-			tied_M200 = lambda M: total_model.logM200_h_0
-			total_model.logM200_h_1.tied = tied_M200
+		# Tie M200 for the compund model
+		striped_param_names = [i[:-2] for i in total_model.param_names]
+		striped_param_flags = ['logM200_h' in i for i in striped_param_names]
+		num_M200 = sum(striped_param_flags)
+
+		if num_M200 <= 1: return total_model
+		
+		tied_M200 = lambda M: total_model.logM200_h_0
+		for i in range(num_M200-1,0,-1):
+			total_model.__dict__['_constraints']['tied']['logM200_h_'+str(i)] = tied_M200
 		return total_model
 
 
