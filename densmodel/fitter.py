@@ -4,6 +4,41 @@ from astropy.modeling.fitting import _fitter_to_model_params
 from astropy.modeling import models
 
 
+def ParamPrior(param, param_name):
+    '''
+    Choose the prior for a given parameter
+    '''
+    def logM200_prior(logM200):
+        if 10 < logM200 < 16: # and 0.0 <= offset < 1. and 0.0 <= p <= 1.:
+            return np.log(1./(16.-10.))
+        else:
+            return -np.inf
+    
+    def offset_prior(offset):
+        if 0.0 <= offset < 1.: # and 0.0 <= p <= 1.:
+            return np.log(1./(1.-0.))
+        else:
+            return -np.inf       
+
+    def p_cen_prior(p_cen):
+        if 0.0 <= p_cen <= 1.:
+            return np.log(1./(1.-0.))
+        else:
+            return -np.inf  
+
+    def logMstar_prior(logMstar):
+        if 8 < logMstar < 14:
+            return np.log(1./(14.-8.))
+        else:
+            return -np.inf
+
+    print param_name, param
+    if param_name == 'logMstar_h': return logMstar_prior(param)
+    if param_name == 'logM200_h': return logM200_prior(param)
+    if param_name == 'disp_offset_h': return offset_prior(param)
+    if param_name == 'p_cen': return p_cen_prior(param)
+    if param_name == 'Delta': return 0.0
+
 
 class ObjectiveFunction(object):
     __metaclass__ = ABCMeta
@@ -120,13 +155,15 @@ class LogPosterior(ObjectiveFunction):
         pass
     
     def logposterior(self, parameters):
-        return self.logprior(parameters) + self.loglikelihood(parameters)
+        lp = self.logprior(parameters)
+        lll= self.loglikelihood(parameters)
+        print '--------------', lp, lll
+        return lp + lll
+        #return self.logprior(parameters) + self.loglikelihood(parameters)
     
     def __call__(self, parameters):
         return self.logposterior(parameters)
 
-
-logmin = -10000000000000000.0
 
 class GaussianLogPosterior(LogPosterior, object):
     
@@ -142,41 +179,13 @@ class GaussianLogPosterior(LogPosterior, object):
         Some hard-coded priors.
         
         """
-        # amplitude prior
-        amplitude = pars[0]
-        logamplitude = np.log(amplitude)
-        
-        logamplitude_min = -8.
-        logamplitude_max = 8.0 
-        p_amp = ((logamplitude_min <= logamplitude <= logamplitude_max) / \
-                      (logamplitude_max-logamplitude_min))
-        
-        # mean prior
-        mean = pars[1]
-        
-        mean_min = self.x[0]
-        mean_max = self.x[-1]
-        
-        p_mean = ((mean_min <= mean <= mean_max) / (mean_max-mean_min))
+        p = 1.
+        for param, name in zip(pars, self.model.param_names):
+            if name[-1] in ['0','1','2','3']: name = name[:-2] 
+            p *= ParamPrior(param, name)
+        print p
+        return p
 
-        # width prior
-        width = pars[2]
-        logwidth = np.log(width)
-        
-        logwidth_min = -8.0
-        logwidth_max = 8.0
-        
-        p_width = ((logwidth_min <= logwidth <= logwidth_max) / (logwidth_max-logwidth_min))
-
-        pp = p_amp*p_mean*p_width
-        
-  
-        if pp == 0 or np.isfinite(pp) is False:
-            return logmin
-        else:
-            return np.log(pp)
-        
-    
     def loglikelihood(self, pars):
         _fitter_to_model_params(self.model, pars)
         
