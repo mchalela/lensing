@@ -4,35 +4,50 @@ from astropy.modeling.fitting import _fitter_to_model_params
 from astropy.modeling import models
 
 
+
+def Chi2Reduced(model, data, err, df=1):
+    '''
+    Computes the reduced Chi2 for a given model and data
+    '''
+    nbin = len(data)
+    chi2 = ((model-data)**2/err**2).sum() / float(nbin-1-df)
+    return chi2
+
+
+
 def ParamPrior(param, param_name):
     '''
     Choose the prior for a given parameter
     '''
+    lmin = -1e10
+    
     def logM200_prior(logM200):
+        print logM200
         if 10 < logM200 < 16: # and 0.0 <= offset < 1. and 0.0 <= p <= 1.:
-            return np.log(1./(16.-10.))
+            return 0.0 #1./(16.-10.)
         else:
-            return -np.inf
+            return lmin
     
     def offset_prior(offset):
         if 0.0 <= offset < 1.: # and 0.0 <= p <= 1.:
             return np.log(1./(1.-0.))
         else:
-            return -np.inf       
+            return lmin       
 
     def p_cen_prior(p_cen):
         if 0.0 <= p_cen <= 1.:
             return np.log(1./(1.-0.))
         else:
-            return -np.inf  
+            return lmin  
 
     def logMstar_prior(logMstar):
-        if 8 < logMstar < 14:
-            return np.log(1./(14.-8.))
+        print logMstar
+        if 7 < logMstar < 14:
+            return 0.0 #1./(14.-7.)
         else:
-            return -np.inf
+            return lmin
 
-    print param_name, param
+    #print param_name, param
     if param_name == 'logMstar_h': return logMstar_prior(param)
     if param_name == 'logM200_h': return logM200_prior(param)
     if param_name == 'disp_offset_h': return offset_prior(param)
@@ -182,8 +197,7 @@ class GaussianLogPosterior(LogPosterior, object):
         p = 1.
         for param, name in zip(pars, self.model.param_names):
             if name[-1] in ['0','1','2','3']: name = name[:-2] 
-            p *= ParamPrior(param, name)
-        print p
+            p += ParamPrior(param, name)
         return p
 
     def loglikelihood(self, pars):

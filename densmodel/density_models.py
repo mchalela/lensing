@@ -405,6 +405,7 @@ class DensityModels:
 	def BCG(self, logMstar_0=13.):
 		model = models.custom_model(self.density.BCG)
 		init_mod = model(logMstar_h=logMstar_0, name='BCG')
+		init_mod.logM200_h.bounds = (7., 14.)
 		return init_mod
 
 	def BCG_with_M200(self, logM200_0=13.):
