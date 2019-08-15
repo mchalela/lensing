@@ -1,9 +1,14 @@
 from abc import ABCMeta
 import abc
-from astropy.modeling.fitting import _fitter_to_model_params
+import time
+import numpy as np
+import scipy.optimize
+import emcee
 from astropy.modeling import models
-
-
+from astropy.modeling.fitting import _fitter_to_model_params
+from pathos.multiprocessing import ProcessingPool as Pool
+import densmodel
+from astropy.cosmology import Planck15
 
 def Chi2Reduced(model, data, err, df=1):
     '''
@@ -13,16 +18,13 @@ def Chi2Reduced(model, data, err, df=1):
     chi2 = ((model-data)**2/err**2).sum() / float(nbin-1-df)
     return chi2
 
-
-
 def ParamPrior(param, param_name):
     '''
     Choose the prior for a given parameter
     '''
     lmin = -1e10
-    
+
     def logM200_prior(logM200):
-        print logM200
         if 10 < logM200 < 16: # and 0.0 <= offset < 1. and 0.0 <= p <= 1.:
             return 0.0 #1./(16.-10.)
         else:
@@ -131,9 +133,7 @@ class GaussianLogLikelihood(LogLikelihood, object):
         
     def evaluate(self, pars):
         _fitter_to_model_params(self.model, pars)
-        
         mean_model = self.model(self.x)
-        
         loglike = np.sum(-0.5*np.log(2.*np.pi) - np.log(self.yerr) - (self.y-mean_model)**2/(2.*self.yerr**2))
         
         return loglike
@@ -170,11 +170,7 @@ class LogPosterior(ObjectiveFunction):
         pass
     
     def logposterior(self, parameters):
-        lp = self.logprior(parameters)
-        lll= self.loglikelihood(parameters)
-        print '--------------', lp, lll
-        return lp + lll
-        #return self.logprior(parameters) + self.loglikelihood(parameters)
+        return self.logprior(parameters) + self.loglikelihood(parameters)
     
     def __call__(self, parameters):
         return self.logposterior(parameters)
@@ -194,7 +190,7 @@ class GaussianLogPosterior(LogPosterior, object):
         Some hard-coded priors.
         
         """
-        p = 1.
+        p = 0.
         for param, name in zip(pars, self.model.param_names):
             if name[-1] in ['0','1','2','3']: name = name[:-2] 
             p += ParamPrior(param, name)
@@ -206,5 +202,97 @@ class GaussianLogPosterior(LogPosterior, object):
         mean_model = self.model(self.x)
         
         loglike = np.sum(-0.5*np.log(2.*np.pi) - np.log(self.yerr) - (self.y-mean_model)**2/(2.*self.yerr**2))
-
         return loglike
+
+
+# The problem with emcee is that the probability function and its arguments have to be pickable
+# This is a very ugly solution, but it works... we dont send the model as an argument but 
+# we can set a global variable
+GlobalModel = None
+
+def log_prior(pars):
+    #model, pars = theta_model_pars
+    p = 0.
+    for param, name in zip(pars, GlobalModel.param_names):
+        if name[-1] in ['0','1','2','3']: name = name[:-2] 
+        p += ParamPrior(param, name)
+    return p
+
+def log_likelihood(pars, x, y, yerr):
+    #model, pars = theta_model_pars
+    _fitter_to_model_params(GlobalModel, pars)
+    mean_model = GlobalModel(x)
+    loglike = np.sum(-0.5*np.log(2.*np.pi) - np.log(yerr) - (y-mean_model)**2/(2.*yerr**2))
+    return loglike
+
+def log_probability(pars, x, y, yerr):
+    #DNM = densmodel.DensityModels(z=0.2, cosmo=Planck15)
+    #model = DNM.NFW(logM200_0=13.)
+
+    lp = log_prior(pars)
+    if not np.isfinite(lp):
+        return -np.inf
+    return lp + log_likelihood(pars, x, y, yerr)
+
+
+class Fitter(object):
+    def __init__(self, r, shear, shear_err, model, start_params):
+        global GlobalModel
+
+        self.r = r
+        self.shear = shear
+        self.shear_err = shear_err
+        #self.model = model
+        self.start = start_params
+        GlobalModel = model.copy()
+
+    def MCMC(self, method='GLL', nwalkers=15, steps=300, sample_name='default', threads=4):
+
+        if method == 'GLL':
+            loglike = log_likelihood
+            #loglike = GaussianLogLikelihood(self.r, self.shear, self.shear_err, self.model)
+        elif method == 'GLP':
+            loglike = log_probability
+            #loglike = GaussianLogPosterior(self.r, self.shear, self.shear_err, self.model)
+
+        #Sample the posterior using emcee
+        ndim = len(GlobalModel.parameters)
+
+        p0 = np.random.normal(self.start, ndim*[0.2], size=(nwalkers, ndim))
+
+        #pool = Pool()
+        args = (self.r, self.shear, self.shear_err)
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, loglike, args=args, threads=threads)#, pool=pool)
+
+        # the MCMC chains take some time
+        print 'Running MCMC...'
+        t0 = time.time()
+        pos, prob, state = sampler.run_mcmc(p0, steps)
+        print 'Tiempo: ', (time.time()-t0)/60.
+        #pool.terminate()
+        # save the chain and return file name
+        samples_file = sample_name+'.'+str(nwalkers)+'.'+str(steps)+'.'+str(ndim)+'.chain' 
+        samples = sampler.chain.reshape((-1, ndim))
+        np.savetxt(samples_file, samples)
+        return samples_file
+
+    def MCMC_OutputAnalysis(self, samples_file):
+        pass
+
+    def Minimize(self, method='GLL'):
+
+        if method == 'GLL':
+            loglike = log_likelihood
+            #loglike = GaussianLogLikelihood(self.r, self.shear, self.shear_err, GlobalModel)
+        elif method == 'GLP':
+            loglike = log_probability
+            #loglike = GaussianLogPosterior(self.r, self.shear, self.shear_err, GlobalModel)
+        neg_loglike = lambda *x: -loglike(*x)
+
+        print 'Minimizing...'
+        t0 = time.time()
+        args = (self.r, self.shear, self.shear_err)
+        opt = scipy.optimize.minimize(neg_loglike, self.start, args=args, method="L-BFGS-B", tol=1.e-10)
+        print 'Tiempo: ', (time.time()-t0)/60.
+        return opt
+

@@ -9,11 +9,13 @@ import scipy.special as sp
 #import camb
 import math
 
+
 cvel= 299792458.		# Speed of light (m.s-1)
 G 	= 6.67384e-11		# Gravitational constant (m3.kg-1.s-2)
 pc 	= 3.085678e16		# 1 pc (m)
 Msun= 1.989e30			# Solar mass (kg)
 #cosmo = {'omega_M_0':0.3, 'omega_lambda_0':0.7, 'omega_k_0':0.0, 'h':0.7}
+
 
 # Density models ----------------------
 class Density:
@@ -398,14 +400,18 @@ class Density:
 		return second_halo
 
 
+
+
 class DensityModels:
 	def __init__(self, z, cosmo=None):
+		self.z = z
+		self.cosmo = cosmo
 		self.density = Density(z, cosmo)
 
 	def BCG(self, logMstar_0=13.):
 		model = models.custom_model(self.density.BCG)
 		init_mod = model(logMstar_h=logMstar_0, name='BCG')
-		init_mod.logM200_h.bounds = (7., 14.)
+		init_mod.logMstar_h.bounds = (7., 14.)
 		return init_mod
 
 	def BCG_with_M200(self, logM200_0=13.):

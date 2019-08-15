@@ -10,7 +10,7 @@ from astropy import units
 from astropy.cosmology import Planck15 #, LambdaCDM
 from lensing.densmodel import Density
 
-DM = Density(Planck15)
+DM = Density(z=0.2, Planck15)
 ###############################################################################
 #--------------------------------------------------------------------
 # probability of the data given the model
@@ -110,7 +110,7 @@ def lnlike_fix_off(theta, offset, z, rbins, data, stddev):
     #logm, offsets = theta
     
     # calculate the model
-    nfw_model = DM.NFW(r_h=rbins, z=z, M200_h=10**logm)
+    nfw_model = DM.NFW(r_h=rbins, logM200_h=logm)
     model = nfw_model
     #nfwoff_model = DM.NFWoff(r_h=rbins, z=z, M200_h=10**logm, disp_offset_h=offset)
     #model = p*nfw_model + (1-p)*nfwoff_model
@@ -149,7 +149,7 @@ def lnprob_fix_off(theta, offset, z, rbins, data, stddev):
 
 #####################################################################
 #--------------------------------------------------------------------
-def mcmc_create_samples(args, ndim=3, nwalkers=15, steps=300, file_name='default', threads=4):
+def mcmc_create_samples(args, ndim=3, nwalkers=10, steps=300, file_name='default', threads=4):
 
 	#Sample the posterior using emcee
 	#ndim = 
@@ -177,6 +177,7 @@ def mcmc_create_samples(args, ndim=3, nwalkers=15, steps=300, file_name='default
 	np.savetxt(samples_file, samples)
 
 	return None
+
 
 
 
@@ -221,7 +222,7 @@ profile = np.loadtxt('../redMapper_test/profile'+name+'.cat')
 rbins = profile[:,0] * 0.7		# R in Mpc/h
 shear_obs = profile[:,1] / 0.7	# Density contrast in h*Msun/pc2
 shear_err = profile[:,2] / 0.7
-args_fix_off=(offset, z, rbins, shear_obs, shear_err)
+args_fix_off=(offset, rbins, shear_obs, shear_err)
 args_fix_none=(z, rbins, shear_obs, shear_err)
 mcmc_create_samples(args=args_fix_off, ndim=2, nwalkers=10, steps=300, file_name=name)
 samples_file = 'samples_dim.10.300.2.'+name+'.txt'
