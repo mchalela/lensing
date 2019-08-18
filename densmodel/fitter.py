@@ -7,15 +7,14 @@ import emcee
 from astropy.modeling import models
 from astropy.modeling.fitting import _fitter_to_model_params
 from multiprocessing import Pool
-import densmodel
-from astropy.cosmology import Planck15
+import warnings
 
 
 # The problem with emcee is that the probability function and its arguments have to be pickable
 # This is a very ugly solution, but it works... we dont send the model as an argument but 
-# we can set a global variable
+# we can set it as a global variable
 GlobalModel = None
-
+isGlobalModelclear = True
 
 def Chi2Reduced(model, data, err, df=1):
     '''
@@ -210,41 +209,24 @@ class GaussianLogPosterior(LogPosterior, object):
         return loglike
 
 
-
-def log_prior(pars):
-    #model, pars = theta_model_pars
-    p = 0.
-    for param, name in zip(pars, GlobalModel.param_names):
-        if name[-1] in ['0','1','2','3']: name = name[:-2] 
-        p += ParamPrior(param, name)
-    return p
-
-def log_likelihood(pars, x, y, yerr):
-    #model, pars = theta_model_pars
-    _fitter_to_model_params(GlobalModel, pars)
-    mean_model = GlobalModel(x)
-    loglike = np.sum(-0.5*np.log(2.*np.pi) - np.log(yerr) - (y-mean_model)**2/(2.*yerr**2))
-    return loglike
-
-def log_probability(pars, x, y, yerr):
-    #DNM = densmodel.DensityModels(z=0.2, cosmo=Planck15)
-    #model = DNM.NFW(logM200_0=13.)
-
-    lp = log_prior(pars)
-    if not np.isfinite(lp):
-        return -np.inf
-    return lp + log_likelihood(pars, x, y, yerr)
-
-
 class Fitter(object):
     def __init__(self, r, shear, shear_err, model, start_params):
-        global GlobalModel
+        global GlobalModel, isGlobalModelclear
+        if not isGlobalModelclear:
+            warnings.warn('Please reset the Fitter using the Fitter.clear() method.', RuntimeWarning)
 
         self.r = r
         self.shear = shear
         self.shear_err = shear_err
         self.start = start_params
         GlobalModel = model.copy()
+        isGlobalModelclear = False
+
+    def clear(self):
+        global GlobalModel, isGlobalModelclear
+
+        GlobalModel = None
+        isGlobalModelclear = True
 
     def MCMC(self, method='GLL', nwalkers=15, steps=300, sample_name='default', threads=4):
 
@@ -268,7 +250,7 @@ class Fitter(object):
         print 'Running MCMC...'
         t0 = time.time()
         pos, prob, state = sampler.run_mcmc(p0, steps)
-        print 'Tiempo: ', (time.time()-t0)/60.
+        print 'Completed in {} min'.format((time.time()-t0)/60.)
         pool.terminate()
         # save the chain and return file name
         samples_file = sample_name+'.'+str(nwalkers)+'.'+str(steps)+'.'+str(ndim)+'.chain' 
@@ -276,10 +258,8 @@ class Fitter(object):
         np.savetxt(samples_file, samples)
         return sampler, samples_file
 
-    def MCMC_OutputAnalysis(self, samples_file):
-        pass
 
-    def Minimize(self, method='GLL'):
+    def Minimize(self, method='GLL', verbose=True):
 
         if method == 'GLL':
             #loglike = log_likelihood
@@ -292,7 +272,27 @@ class Fitter(object):
         print 'Minimizing...'
         t0 = time.time()
         args = (self.r, self.shear, self.shear_err)
-        opt = scipy.optimize.minimize(neg_loglike, self.start, method="L-BFGS-B", tol=1.e-10)
-        print 'Tiempo: ', (time.time()-t0)/60.
-        return opt
+        output = scipy.optimize.minimize(neg_loglike, self.start, method="L-BFGS-B", tol=1.e-10)
+        print 'Completed in {} min'.format((time.time()-t0)/60.)
 
+        output = self.Minimize_OutputAnalysis(output)
+        return output
+
+    def Minimize_OutputAnalysis(self, output):
+
+        nparam = len(GlobalModel.parameters)
+        _fitter_to_model_params(GlobalModel, output.x)
+        mean_model = GlobalModel(self.r)
+        errors = np.diag(output.hess_inv.todense())**0.5
+        chi2 = Chi2Reduced(mean_model, self.shear, self.shear_err, df=nparam)
+
+        output['param_values'] = output.pop('x')
+        more = {'model_name': GlobalModel.name,
+                'chi2': chi2,
+                'param_names': [n.encode('utf-8') for n in GlobalModel.param_names],
+                'param_errors': errors}
+        output.update( more )
+        return output
+
+    def MCMC_OutputAnalysis(self, samples_file):
+        pass

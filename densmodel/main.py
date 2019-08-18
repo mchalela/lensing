@@ -12,62 +12,6 @@ from lensing import shear, densmodel
 
 
 
-class Fitter(object):
-	def __init__(self, r, shear, shear_err, model, start_params):
-
-		self.r = r
-		self.shear = shear
-		self.shear_err = shear_err
-		self.model = model
-		self.start = start_params
-
-	def MCMC(self, method='GLL', nwalkers=15, steps=300, sample_name='default', threads=4):
-
-		if method == 'GLL':
-			loglike = GaussianLogLikelihood(self.r, self.shear, self.shear_err, self.model)
-		elif method == 'GLP':
-			loglike = GaussianLogPosterior(self.r, self.shear, self.shear_err, self.model)
-
-		#Sample the posterior using emcee
-		ndim = len(self.model.parameters)
-		p0 = np.random.normal(self.start, ndim*[0.2], size=(nwalkers, ndim))
-
-		sampler = emcee.EnsembleSampler(nwalkers, ndim, loglike, threads=threads)
-
-		# the MCMC chains take some time
-		print 'Running MCMC...'
-		t0 = time.time()
-		pos, prob, state = sampler.run_mcmc(p0, steps)
-		print 'Tiempo: ', (time.time()-t0)/60.
-
-		# save the chain and return file name
-		samples_file = sample_name+'.'+str(nwalkers)+'.'+str(steps)+'.'+str(ndim)+'.chain' 
-		samples = sampler.chain.reshape((-1, ndim))
-		np.savetxt(samples_file, samples)
-		return samples_file
-
-	def Minimize(self, method='GLL', file_name='default'):
-
-		if method == 'GLL':
-			loglike = GaussianLogLikelihood(self.r, self.shear, self.shear_err, self.model)
-		elif method == 'GLP':
-			loglike = GaussianLogPosterior(self.r, self.shear, self.shear_err, self.model)
-		neg_loglike = lambda x: -loglike(x)
-
-		print 'Minimizing...'
-		t0 = time.time()
-		opt = scipy.optimize.minimize(neg_loglike, self.start, method="L-BFGS-B", tol=1.e-10)
-		print 'Tiempo: ', (time.time()-t0)/60.
-		return opt
-
-
-
-
-
-
-
-
-
 
 name = 'bin4_COMB'
 z=0.25
