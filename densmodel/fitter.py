@@ -296,3 +296,8 @@ class Fitter(object):
 
     def MCMC_OutputAnalysis(self, samples_file):
         pass
+
+
+def Fitter2Model(model, params):
+    _fitter_to_model_params(model, params)
+    return None

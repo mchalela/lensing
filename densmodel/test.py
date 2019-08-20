@@ -34,18 +34,18 @@ shear *= 1+np.random.normal(0., 0.2, r.shape)
 shear_err = 0.2*shear
 
 DNM = densmodel.DensityModels(z=z, cosmo=Planck15)
-#bcg_init = DNM.BCG_with_M200(logM200_0=13.)
-bcg_init = DNM.BCG(logMstar_0=12.)
-nfw_init = DNM.NFW(logM200_0=13.)
-#shalo_init = DNM.SecondHalo(logM200_0=13.)
+#bcg_init = DNM.BCG_with_M200()
+bcg_init = DNM.BCG()
+nfw_init = DNM.NFW()
+#shalo_init = DNM.SecondHalo()
 shear_init = DNM.AddModels([bcg_init, nfw_init])#, shalo_init])
 #shear_init2 = nfw_init.copy()#, shalo_init])
-#shear_init = DNM.SIS(disp_0=500.)
+#shear_init = DNM.SIS()
 
 start_params = [12., 13.]
 fitter = densmodel.Fitter(r, shear, shear_err, shear_init, start_params)
-out_min = fitter.Minimize(method='GLL')
-_fitter_to_model_params(shear_init, out_min.param_values)
+out_min = fitter.Minimize(method='GLP')
+densmodel.Fitter2Model(shear_init, out_min.param_values)
 
 '''
 start_params = [11., 14.]
