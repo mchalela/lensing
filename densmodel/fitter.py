@@ -7,7 +7,6 @@ import emcee
 from astropy.modeling import models
 from astropy.modeling.fitting import _fitter_to_model_params
 from multiprocessing import Pool
-import warnings
 
 
 # The problem with emcee is that the probability function and its arguments have to be pickable
@@ -211,9 +210,34 @@ class GaussianLogPosterior(LogPosterior, object):
 
 class Fitter(object):
     def __init__(self, r, shear, shear_err, model, start_params):
+        '''
+        Fitter method.
+        Inputs:
+        -------
+          r:         ndarray. Distance to the lens centre in Mpc/h.
+          shear:     ndarray. Density contrast in h*Msun/pc2.
+          shear_err: ndarray. Density contrast error in h*Msun/pc2.
+          model:     astropy model. Density model contructed with densmodel.DensityModels.
+          start_params: list. Starting values for the fitter. If model is a compound
+                model with multiple parameters, start_param values should be in
+                the same order as given in model.param_names.
+
+        Methods:
+        --------
+        clear:  Resets the model object. If you need to fit multiple models you
+                should clear the fitter after each fit;
+                i.e. instantiate the fitter, fit your model, clear the fitter, repeat.
+        MCMC:   Uses emcee sampler to sample the Gaussian LogLikelihood (method='GLL')
+                with no priors. If you want flat priors use method='GLP'. Usefull for
+                expesive compound models.
+        Minimize: Uses the scipy minimize method to minimize the negative Gaussian 
+                LogLikelihood (method='GLL'). 
+
+        '''
+
         global GlobalModel, isGlobalModelclear
         if not isGlobalModelclear:
-            warnings.warn('Please reset the Fitter using the Fitter.clear() method.', RuntimeWarning)
+            print ' WARNING: Please reset the Fitter using the Fitter.clear() method.'
 
         self.r = r
         self.shear = shear
@@ -228,7 +252,7 @@ class Fitter(object):
         GlobalModel = None
         isGlobalModelclear = True
 
-    def MCMC(self, method='GLL', nwalkers=15, steps=300, sample_name='default', threads=4):
+    def MCMC(self, method='GLL', nwalkers=16, steps=300, sample_name='default'):
 
         if method == 'GLL':
             #loglike = log_likelihood
@@ -239,19 +263,18 @@ class Fitter(object):
 
         #Sample the posterior using emcee
         ndim = len(GlobalModel.parameters)
-
         p0 = np.random.normal(self.start, ndim*[0.2], size=(nwalkers, ndim))
 
         pool = Pool()
         args = (self.r, self.shear, self.shear_err)
         sampler = emcee.EnsembleSampler(nwalkers, ndim, loglike, pool=pool)
-
         # the MCMC chains take some time
         print 'Running MCMC...'
         t0 = time.time()
         pos, prob, state = sampler.run_mcmc(p0, steps)
         print 'Completed in {} min'.format((time.time()-t0)/60.)
         pool.terminate()
+
         # save the chain and return file name
         samples_file = sample_name+'.'+str(nwalkers)+'.'+str(steps)+'.'+str(ndim)+'.chain' 
         samples = sampler.chain.reshape((-1, ndim))
@@ -286,12 +309,17 @@ class Fitter(object):
         errors = np.diag(output.hess_inv.todense())**0.5
         chi2 = Chi2Reduced(mean_model, self.shear, self.shear_err, df=nparam)
 
-        output['param_values'] = output.pop('x')
         more = {'model_name': GlobalModel.name,
-                'chi2': chi2,
                 'param_names': [n.encode('utf-8') for n in GlobalModel.param_names],
-                'param_errors': errors}
-        output.update( more )
+                'param_values': output.x,
+                'param_errors': errors,
+                'hess_inv': output.hess_inv,
+                'jac': output.jac,
+                'nit': output.nit,
+                'chi2': chi2,
+                'status': output.status,
+                'success': output.success}
+        output = scipy.optimize.optimize.OptimizeResult(more)
         return output
 
     def MCMC_OutputAnalysis(self, samples_file):
@@ -299,5 +327,8 @@ class Fitter(object):
 
 
 def Fitter2Model(model, params):
+    '''
+    Maps the parameters to the model so the best fit can be evaluated as model(r)
+    '''
     _fitter_to_model_params(model, params)
     return None

@@ -20,7 +20,7 @@ Msun= 1.989e30			# Solar mass (kg)
 # Density models ----------------------
 class Density:
 	'''
-	Module to handle density models and contruct composite models to fit any profile.
+	Definition of contrast density models.
 	'''
 
 	def __init__(self, z, cosmo=None):
@@ -403,6 +403,10 @@ class Density:
 
 
 class DensityModels:
+	'''
+	Module to handle density models and contruct composite models to fit any profile.
+	'''
+
 	def __init__(self, z, cosmo=None):
 		self.z = z
 		self.cosmo = cosmo

@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt ; plt.ion()
 from astropy.modeling.fitting import _fitter_to_model_params
 import emcee
 import corner
-from astropy import units
 from astropy.cosmology import Planck15 , LambdaCDM
 from astropy.modeling import models, fitting
 from lensing import shear, densmodel
@@ -87,6 +86,6 @@ old_fit = SIS_stack_fit(r, shear, shear_err)
 plt.plot(r, shear, 'k.')
 plt.errorbar(r, shear, yerr=shear_err, fmt='None', ecolor='k')
 #plt.plot(r, nfw, 'r--')
-plt.loglog()
 plt.plot(r, shear_init(r), 'r-', lw=2)
+plt.loglog()
 plt.plot(old_fit[-2], old_fit[-1],'C0--')
