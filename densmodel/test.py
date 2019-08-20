@@ -18,15 +18,15 @@ import scipy.optimize
 z=0.2
 DN = densmodel.Density(z=z, cosmo=Planck15)
 logM200 = np.log10(2.3e14)
-logMstar= np.log10(6.4e11)
-vdisp = 250.
-r = np.geomspace(0.01, 3., 40)
-#bcg = DN.BCG_with_M200(r, logM200)
-bcg = DN.BCG(r, logMstar)
-nfw = DN.NFW(r, logM200)
-sis = DN.SIS(r, vdisp)
-shear = bcg + nfw
-#shear = sis.copy()
+offset = 0.33
+p_cen = 0.72
+
+r = np.geomspace(0.01, 10., 40)
+bcg = DN.BCG_with_M200(r, logM200)
+nfw_comb = DN.NFWCombined(r, logM200, offset, p_cen)
+shalo = DN.SecondHalo(r, logM200)
+#shear = bcg + nfw
+shear = bcg+nfw_comb+shalo
 
 
 shear *= 1+np.random.normal(0., 0.2, r.shape)
