@@ -1,11 +1,5 @@
 # LensCat module description
 
-LensCat allows you to easily create source catalogues for your lenses.
-Right now the available lensing catalogues are KiDS, CS82, CFHTLens...
-Each catalogue has different properties so the idea is to provide a 
-unified interface and namespace for all of them. 
-
-
 ## Catalogue Description
 
 Some details and reference links for each catalogue...

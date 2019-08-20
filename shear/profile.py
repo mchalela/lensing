@@ -40,8 +40,8 @@ class Profile(object):
 			# Compute distance and ellipticity components...
 			dist, theta = gentools.sphere_angular_vector(cat['RAJ2000'], cat['DECJ2000'],
 														cat['RA'], cat['DEC'], units='deg')
-			theta += 90. #np.pi/2.
-			dist_hMpc = dist*3600.*Mpc_scale*cosmo.h # distance to the lens in Mpc/h
+			theta += 90. 
+			dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # distance to the lens in Mpc/h
 			et, ex = gentools.polar_rotation(cat['e1'], cat['e2'], np.deg2rad(theta))
 
 			digit = np.digitize(dist_hMpc, bins=self.bins)-1
@@ -67,6 +67,13 @@ class Profile(object):
 													weight, boot_n)
 					self.shear_error[i] = err_t  / m_cal[i]
 					self.cero_error[i] = err_x / m_cal[i]
+			
+			# Now in units of h*Msun/pc**2
+			self.shear /= cosmo.h
+			self.cero /= cosmo.h
+			self.shear_error /= cosmo.h
+			self.cero_error /= cosmo.h
+			self.stat_error /= cosmo.h
 
 	def __getitem__(self, key):
 		return getattr(self, key)

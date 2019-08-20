@@ -146,12 +146,14 @@ class Catalog(object):
 			self.sources = data.shape[0]
 
 	def add_column(self, index=0, name=None, data=None):
+		'''Add a column in a given index position
+		'''
 		self.data.insert(index, name, data)
-		#print self
 
 	def remove_column(self, columns):
+		'''Remove a list of columns
+		'''
 		self.data.drop(columns=columns)
-		#print self
 
 	def write_to(self, file, format='FITS', overwrite=False):
 		'''Save the source catalog
@@ -240,6 +242,8 @@ class Survey(object):
 		cls.data.insert(index, name, data)
 
 	def remove_column(cls, columns):
+		'''Remove a list of columns
+		'''
 		cls.data.drop(columns=columns)
 
 
