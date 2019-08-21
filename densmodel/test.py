@@ -1,11 +1,11 @@
 import os
 import time
 import numpy as np
-import matplotlib.pyplot as plt ; plt.ion()
+#import matplotlib.pyplot as plt ; plt.ion()
 #import multiprocessing
 from astropy.modeling.fitting import _fitter_to_model_params
 import emcee
-import corner
+#import corner
 from astropy.cosmology import Planck15 , LambdaCDM
 from astropy.modeling import models, fitting
 from lensing import shear, densmodel
@@ -22,11 +22,15 @@ offset = 0.33
 p_cen = 0.72
 
 r = np.geomspace(0.01, 10., 40)
+t0=time.time()
 bcg = DN.BCG_with_M200(r, logM200)
+print 'BCG', time.time()-t0
 nfw_comb = DN.NFWCombined(r, logM200, offset, p_cen)
+print 'NFW',time.time()-t0
 shalo = DN.SecondHalo(r, logM200)
-#shear = bcg + nfw
-shear = bcg+nfw_comb+shalo
+print 'SecondHalo',time.time()-t0
+shear_model = bcg+nfw_comb+shalo
+np.savetxt('compound_time_test.txt', np.vstack((r, shear_model)))
 
 
 shear *= 1+np.random.normal(0., 0.2, r.shape)
