@@ -6,7 +6,10 @@ import numpy as np
 from scipy.integrate import quad, simps
 from scipy.interpolate import CubicSpline
 import scipy.special as sp
-import camb
+try:
+	import camb
+except Exception:
+	print 'WARNING: [lensing.densmodel] No module named camb. Used in second halo profile.'
 
 
 cvel= 299792458.		# Speed of light (m.s-1)
