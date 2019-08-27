@@ -237,7 +237,8 @@ class Fitter(object):
 
         global GlobalModel, isGlobalModelclear
         if not isGlobalModelclear:
-            print ' WARNING: Please reset the Fitter using the Fitter.clear() method.'
+            print ' Clearing previous model.'
+            self.clear()
 
         self.r = r
         self.shear = shear
