@@ -300,7 +300,7 @@ class Fitter(object):
         print 'Completed in {} min'.format((time.time()-t0)/60.)
 
         output = self.Minimize_OutputAnalysis(output)
-        return output, output_test
+        return output
 
     def Minimize_OutputAnalysis(self, output):
 
