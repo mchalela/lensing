@@ -297,10 +297,12 @@ class Fitter(object):
         t0 = time.time()
         args = (self.r, self.shear, self.shear_err)
         output = scipy.optimize.minimize(neg_loglike, self.start, method="L-BFGS-B", tol=1.e-15)
+        output_2 = scipy.optimize.curve_fit(
+            GlobalModel.evaluate, self.r, self.shear, sigma=self.shear_err, absolute_sigma=True)
         print 'Completed in {} min'.format((time.time()-t0)/60.)
 
         output = self.Minimize_OutputAnalysis(output)
-        return output
+        return output, output_2
 
     def Minimize_OutputAnalysis(self, output):
 
