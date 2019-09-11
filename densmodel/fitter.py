@@ -283,6 +283,35 @@ class Fitter(object):
         return sampler, samples_file
 
 
+    def Minimize(self, verbose=True):
+
+        print 'Minimizing...'
+        t0 = time.time()
+        output = scipy.optimize.curve_fit(GlobalModel.evaluate, 
+            self.r, self.shear, sigma=self.shear_err, p0=self.start, absolute_sigma=True)
+        print 'Completed in {} min'.format((time.time()-t0)/60.)
+
+        output = self.Minimize_OutputAnalysis(output)
+        return output
+
+    def Minimize_OutputAnalysis(self, output):
+
+        popt, pcov = output
+        nparam = len(GlobalModel.parameters)
+        _fitter_to_model_params(GlobalModel, popt)
+        mean_model = GlobalModel(self.r)
+        errors = np.sqrt(np.diag(pcov))
+        chi2 = Chi2Reduced(mean_model, self.shear, self.shear_err, df=nparam)
+
+        more = {'model_name': GlobalModel.name,
+                'param_names': [n.encode('utf-8') for n in GlobalModel.param_names],
+                'param_values': popt,
+                'param_errors': errors,
+                'param_covar': pcov,
+                'chi2': chi2}
+        output = scipy.optimize.optimize.OptimizeResult(more)
+        return output
+    ''' 
     def Minimize(self, method='GLL', verbose=True):
 
         if method == 'GLL':
@@ -297,12 +326,10 @@ class Fitter(object):
         t0 = time.time()
         args = (self.r, self.shear, self.shear_err)
         output = scipy.optimize.minimize(neg_loglike, self.start, method="L-BFGS-B", tol=1.e-15)
-        output_2 = scipy.optimize.curve_fit(
-            GlobalModel.evaluate, self.r, self.shear, sigma=self.shear_err, absolute_sigma=True)
         print 'Completed in {} min'.format((time.time()-t0)/60.)
 
         output = self.Minimize_OutputAnalysis(output)
-        return output, output_2
+        return output
 
     def Minimize_OutputAnalysis(self, output):
 
@@ -324,7 +351,7 @@ class Fitter(object):
                 'success': output.success}
         output = scipy.optimize.optimize.OptimizeResult(more)
         return output
-
+    '''
     def MCMC_OutputAnalysis(self, samples_file):
         pass
 
