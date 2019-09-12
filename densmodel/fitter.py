@@ -311,47 +311,7 @@ class Fitter(object):
                 'chi2': chi2}
         output = scipy.optimize.optimize.OptimizeResult(more)
         return output
-    ''' 
-    def Minimize(self, method='GLL', verbose=True):
 
-        if method == 'GLL':
-            #loglike = log_likelihood
-            loglike = GaussianLogLikelihood(self.r, self.shear, self.shear_err, GlobalModel)
-        elif method == 'GLP':
-            #loglike = log_probability
-            loglike = GaussianLogPosterior(self.r, self.shear, self.shear_err, GlobalModel)
-        neg_loglike = lambda x: -loglike(x)
-
-        print 'Minimizing...'
-        t0 = time.time()
-        args = (self.r, self.shear, self.shear_err)
-        output = scipy.optimize.minimize(neg_loglike, self.start, method="L-BFGS-B", tol=1.e-15)
-        print 'Completed in {} min'.format((time.time()-t0)/60.)
-
-        output = self.Minimize_OutputAnalysis(output)
-        return output
-
-    def Minimize_OutputAnalysis(self, output):
-
-        nparam = len(GlobalModel.parameters)
-        _fitter_to_model_params(GlobalModel, output.x)
-        mean_model = GlobalModel(self.r)
-        errors = np.diag(output.hess_inv.todense())**0.5
-        chi2 = Chi2Reduced(mean_model, self.shear, self.shear_err, df=nparam)
-
-        more = {'model_name': GlobalModel.name,
-                'param_names': [n.encode('utf-8') for n in GlobalModel.param_names],
-                'param_values': output.x,
-                'param_errors': errors,
-                'hess_inv': output.hess_inv,
-                'jac': output.jac,
-                'nit': output.nit,
-                'chi2': chi2,
-                'status': output.status,
-                'success': output.success}
-        output = scipy.optimize.optimize.OptimizeResult(more)
-        return output
-    '''
     def MCMC_OutputAnalysis(self, samples_file):
         pass
 

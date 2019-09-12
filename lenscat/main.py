@@ -136,6 +136,9 @@ class Catalog(object):
 				'Columns: {0}'.format(list(self.data.columns.values))
 		return output
 
+	def __repr__(self):
+		return self.__str__()
+
 	@property
 	def data(self):
 		return self._data

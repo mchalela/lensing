@@ -1,7 +1,7 @@
 import os
 import time
 import numpy as np
-#import matplotlib.pyplot as plt ; plt.ion()
+import matplotlib.pyplot as plt ; plt.ion()
 #import multiprocessing
 from astropy.modeling.fitting import _fitter_to_model_params
 import emcee
@@ -25,30 +25,31 @@ r = np.geomspace(0.01, 10., 40)
 t0=time.time()
 bcg = DN.BCG_with_M200(r, logM200)
 print 'BCG', time.time()-t0
-nfw_comb = DN.NFWCombined(r, logM200, offset, p_cen)
+nfw = DN.NFW(r, logM200)
 print 'NFW',time.time()-t0
-shalo = DN.SecondHalo(r, logM200)
+#shalo = DN.SecondHalo(r, logM200)
 print 'SecondHalo',time.time()-t0
-shear_model = bcg+nfw_comb+shalo
+shear_model = nfw.copy()
 np.savetxt('compound_time_test.txt', np.vstack((r, shear_model)))
 
 
-shear *= 1+np.random.normal(0., 0.2, r.shape)
-shear_err = 0.2*shear
+shear_err = 0.2*shear_model
+shear_model *= 1+np.random.normal(0., 0.2, r.shape)
 
 DNM = densmodel.DensityModels(z=z, cosmo=Planck15)
 #bcg_init = DNM.BCG_with_M200()
 bcg_init = DNM.BCG()
 nfw_init = DNM.NFW()
 #shalo_init = DNM.SecondHalo()
-shear_init = DNM.AddModels([bcg_init, nfw_init])#, shalo_init])
-#shear_init2 = nfw_init.copy()#, shalo_init])
+#shear_init = DNM.AddModels([bcg_init, nfw_init])#, shalo_init])
+shear_init = nfw_init.copy()#, shalo_init])
 #shear_init = DNM.SIS()
 
-start_params = [12., 13.]
-fitter = densmodel.Fitter(r, shear, shear_err, shear_init, start_params)
-out_min = fitter.Minimize(method='GLP')
-densmodel.Fitter2Model(shear_init, out_min.param_values)
+start_params = [12.]#, 13.]
+fitter = densmodel.Fitter(r, shear_model, shear_err, shear_init, start_params)
+out_min, o2 = fitter.Minimize(method='GLP')
+#densmodel.Fitter2Model(shear_init, out_min.param_values)
+densmodel.Fitter2Model(shear_init, o2[0])
 
 '''
 start_params = [11., 14.]
@@ -72,8 +73,11 @@ def SIS_stack_fit(R,D_Sigma,err):
 		Rm=R*1.e6*pc
 		return (((sigma*1.e3)**2)/(2.*G*Rm))*(pc**2/Msun)
 	
-	sigma,err_sigma_cuad=scipy.optimize.curve_fit(sis_profile_sigma,R,D_Sigma,sigma=err,absolute_sigma=True)
-	
+	sigma,err_sigma_cuad=scipy.optimize.curve_fit(
+		sis_profile_sigma,R,D_Sigma,sigma=err,absolute_sigma=True)
+	output=scipy.optimize.curve_fit(
+		sis_profile_sigma,R,D_Sigma,sigma=err,absolute_sigma=True,full_output=True)
+	print output
 	ajuste=sis_profile_sigma(R,sigma)
 	
 	chired=chi_red(ajuste,D_Sigma,err,1)	
@@ -83,12 +87,12 @@ def SIS_stack_fit(R,D_Sigma,err):
 	
 	return sigma[0],np.sqrt(err_sigma_cuad)[0][0],chired,xplot,yplot
 
-old_fit = SIS_stack_fit(r, shear, shear_err)
+old_fit = SIS_stack_fit(r/0.7, shear_model*0.7, shear_err*0.7)
 
 
 #plt.plot(r, sis, 'k-')
-plt.plot(r, shear, 'k.')
-plt.errorbar(r, shear, yerr=shear_err, fmt='None', ecolor='k')
+plt.plot(r, shear_model, 'k.')
+plt.errorbar(r, shear_model, yerr=shear_err, fmt='None', ecolor='k')
 #plt.plot(r, nfw, 'r--')
 plt.plot(r, shear_init(r), 'r-', lw=2)
 plt.loglog()
