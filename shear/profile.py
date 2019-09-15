@@ -16,7 +16,7 @@ Msun = 1.989e30 	# Solar mass (kg)
 
 class Profile(object):
 
-	def __init__(self, cat=None, rin_hMpc=0.1, rout_hMpc=10., bins=10, space='log', cosmo=cosmo, boot_flag=True, boot_n=100):
+	def __init__(self, data=None, rin_hMpc=0.1, rout_hMpc=10., bins=10, space='log', cosmo=cosmo, boot_flag=True, boot_n=100):
 		
 		# Create bins...
 		self.set_bins(rin_hMpc=rin_hMpc, rout_hMpc=rout_hMpc, bins=bins, space=space)
@@ -29,20 +29,20 @@ class Profile(object):
 		self.stat_error = np.zeros(nbin, dtype=float)
 		self.N = np.zeros(nbin, int)
 
-		if cat is not None:
-			if isinstance(cat, pd.DataFrame):
-				cat = cat.to_records()
+		if data is not None:
+			if isinstance(data, pd.DataFrame):
+				data = data.to_records()
 
 			# Define some parameters...
-			Mpc_scale = self.set_Mpc_scale(dl=cat['DL'])
-			sigma_critic = self.set_sigma_critic(dl=cat['DL'], ds=cat['DS'], dls=cat['DLS'])
+			Mpc_scale = self.set_Mpc_scale(dl=data['DL'])
+			sigma_critic = self.set_sigma_critic(dl=data['DL'], ds=data['DS'], dls=data['DLS'])
 
 			# Compute distance and ellipticity components...
-			dist, theta = gentools.sphere_angular_vector(cat['RAJ2000'], cat['DECJ2000'],
-														cat['RA'], cat['DEC'], units='deg')
+			dist, theta = gentools.sphere_angular_vector(data['RAJ2000'], data['DECJ2000'],
+														data['RA'], data['DEC'], units='deg')
 			theta += 90. 
 			dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # distance to the lens in Mpc/h
-			et, ex = gentools.polar_rotation(cat['e1'], cat['e2'], np.deg2rad(theta))
+			et, ex = gentools.polar_rotation(data['e1'], data['e2'], np.deg2rad(theta))
 
 			digit = np.digitize(dist_hMpc, bins=self.bins)-1
 			m_cal = np.ones(nbin, float)
@@ -51,8 +51,8 @@ class Profile(object):
 				mask = digit==i
 				self.N[i] = mask.sum()
 				if self.N[i]==0: continue
-				weight = cat['weight'][mask]/sigma_critic[mask]**2
-				m_cal[i] = 1 + np.average(cat['m'][mask], weights=weight)
+				weight = data['weight'][mask]/sigma_critic[mask]**2
+				m_cal[i] = 1 + np.average(data['m'][mask], weights=weight)
 
 				self.shear[i] = np.average(et[mask]*sigma_critic[mask], weights=weight) / m_cal[i]
 				self.cero[i]  = np.average(ex[mask]*sigma_critic[mask], weights=weight) / m_cal[i]
@@ -77,6 +77,20 @@ class Profile(object):
 
 	def __getitem__(self, key):
 		return getattr(self, key)
+
+	def __str__(self):
+		try:
+			self.__str
+		except AttributeError as e:
+			p = np.column_stack((self.r_hMpc, self.shear, self.shear_error,
+							 self.cero, self.cero_error, self.stat_error, self.N))
+			pdf = pd.DataFrame(p, columns=['r_hMpc','shear','shear_error','cero','cero_error','stat_error','N'])
+			self.__str = str(pdf)
+		finally:
+			return self.__str
+
+	def __repr__(self):
+		return str(self)
 
 	def set_Mpc_scale(self, dl):
 		Mpc_scale = dl*np.deg2rad(1./3600.)
