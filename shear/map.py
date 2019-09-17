@@ -33,20 +33,19 @@ class ShearMap(object):
         dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # distance to the lens in Mpc/h
 
         # Transfrom e1,e2 to cartesian components ex,ey
-        px = dist_hMpc * np.cos(np.deg2rad(theta)) + 1.
-        py = dist_hMpc * np.sin(np.deg2rad(theta)) - 3.
-
+        px = dist_hMpc * np.cos(np.deg2rad(theta))
+        py = dist_hMpc * np.sin(np.deg2rad(theta))
 
         # Get the bin of each galaxy
         if nbins is None:
             nbins = int(nGalaxies / np.sqrt(gals_per_bins))
-        self.bins_x = np.linspace(px.min(), px.max(), nbins+1)
-        self.bins_y = np.linspace(py.min(), py.max(), nbins+1)
-        digit_x = np.digitize(px, bins=self.bins_x)-1
-        digit_y = np.digitize(py, bins=self.bins_y)-1
+        bins_x = np.linspace(px.min(), px.max(), nbins+1)
+        bins_y = np.linspace(py.min(), py.max(), nbins+1)
+        digit_x = np.digitize(px, bins=bins_x)-1
+        digit_y = np.digitize(py, bins=bins_y)-1
     
-        px_map, py_map = np.meshgrid((self.bins_x[:-1]+self.bins_x[1:])/2.,
-                                        (self.bins_y[:-1]+self.bins_y[1:])/2.)
+        px_map, py_map = np.meshgrid((bins_x[:-1]+bins_x[1:])/2.,
+        							(bins_y[:-1]+bins_y[1:])/2.)
         e1_map = np.zeros((nbins, nbins))
         e2_map = np.zeros((nbins, nbins))
 
@@ -58,8 +57,8 @@ class ShearMap(object):
                 masky = digit_y==iy
                 mask = maskx*masky
                 if mask.sum()==0: continue
-                e1_map[ix,iy] = data['e1'][mask].mean() 
-                e2_map[ix,iy] = data['e2'][mask].mean()
+                e1_map[iy,ix] = data['e1'][mask].mean() 
+                e2_map[iy,ix] = data['e2'][mask].mean()
 
 
         e_mod = np.sqrt(e1_map**2 + e2_map**2)
@@ -67,20 +66,32 @@ class ShearMap(object):
         ex_map = e_mod * np.cos(beta)
         ey_map = e_mod * np.sin(beta)
 
-        quiveropts = dict( headlength=0, headwidth=0, headaxislength=0,
-                            width=0.1, pivot='middle', units='xy',
-                              alpha=1, color='black')
-        plt.figure()
-        plt.quiver(px_map, py_map, ex_map, ey_map,**quiveropts)
-        plt.show()
         self.px = px_map
         self.py = py_map
         self.ex = ex_map
         self.ey = ey_map
-        self.beta = beta
-        self.theta = theta
 
     def set_Mpc_scale(self, dl):
         Mpc_scale = dl*np.deg2rad(1./3600.)
         self.Mpc_scale_mean = Mpc_scale.mean()
         return Mpc_scale
+
+    def QuickPlot(self, normed=True, cmap=None):
+    	if cmap is None:
+    		from matplotlib import cm
+    		cmap=cm.gist_heat_r
+
+        emod = np.sqrt(self.ex**2+self.ey**2)
+        self.quiveropts = dict(headlength=0, headwidth=0, headaxislength=0,
+                            width=0.1, pivot='middle', units='xy',
+                              alpha=1, color='black')
+        plt.figure()
+        if normed:
+        	plt.quiver(self.px, self.py, self.ex/emod, self.ey/emod, emod, cmap=cmap, **self.quiveropts)
+        else:
+        	plt.quiver(self.px, self.py, self.ex, self.ey, emod, cmap=cmap, **self.quiveropts)
+        cbar = plt.colorbar()
+        cbar.ax.set_ylabel('$\Vert \gamma \Vert$', fontsize=14)
+        plt.xlabel('$r\,[Mpc/h]$', fontsize=14)
+        plt.ylabel('$r\,[Mpc/h]$', fontsize=14)
+        plt.show()
