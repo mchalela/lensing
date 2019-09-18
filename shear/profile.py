@@ -27,7 +27,7 @@ class Profile(object):
 		self.shear_error = np.zeros(nbin, dtype=float)
 		self.cero_error = np.zeros(nbin, dtype=float)
 		self.stat_error = np.zeros(nbin, dtype=float)
-		self.N = np.zeros(nbin, int)
+		self.N = np.zeros(nbin, dtype=int)
 
 		if data is not None:
 			if isinstance(data, pd.DataFrame):

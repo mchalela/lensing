@@ -46,8 +46,9 @@ class ShearMap(object):
     
         px_map, py_map = np.meshgrid((bins_x[:-1]+bins_x[1:])/2.,
         							(bins_y[:-1]+bins_y[1:])/2.)
-        e1_map = np.zeros((nbins, nbins))
-        e2_map = np.zeros((nbins, nbins))
+        e1_map = np.zeros((nbins, nbins), dtype=float)
+        e2_map = np.zeros((nbins, nbins), dtype=float)
+        self.N = np.zeros((nbins, nbins), dtype=int)
 
         # Average the ellipticities.
         # Should this average be calibrated with the m bias ??
@@ -59,7 +60,7 @@ class ShearMap(object):
                 if mask.sum()==0: continue
                 e1_map[iy,ix] = data['e1'][mask].mean() 
                 e2_map[iy,ix] = data['e2'][mask].mean()
-
+                self.N[iy,ix] = mask.sum()
 
         e_mod = np.sqrt(e1_map**2 + e2_map**2)
         beta = np.arctan2(e2_map, e1_map)/2.
@@ -70,6 +71,9 @@ class ShearMap(object):
         self.py = py_map
         self.ex = ex_map
         self.ey = ey_map
+
+    def __getitem__(self, key):
+        return getattr(self, key)
 
     def set_Mpc_scale(self, dl):
         Mpc_scale = dl*np.deg2rad(1./3600.)
