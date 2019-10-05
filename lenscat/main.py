@@ -98,7 +98,7 @@ class formats:
 	'''Convert dtypes between diferent formats
 	'''
 	np2fits = {np.object:'20A', np.int64:'1K', np.int32:'1J', np.int16:'1I',
-			   np.float64:'1D', np.float32:'1E'}
+			   np.float64:'1D', np.float32:'1E', np.bool:'L'}
 
 	@classonly
 	def pd2fits(cls, dtype):
