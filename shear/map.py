@@ -17,7 +17,7 @@ Msun = 1.989e30     # Solar mass (kg)
 
 class ShearMap(object):
 
-    def __init__(self, data=None, nbins=None, gals_per_bins=50., cosmo=cosmo):
+    def __init__(self, data=None, nbins=None, gals_per_bins=50., box_size_hMpc=None ,cosmo=cosmo):
 
         if data is None:
             raise ValueError('ShearMap needs some data to work with...')
@@ -36,16 +36,26 @@ class ShearMap(object):
         px = dist_hMpc * np.cos(np.deg2rad(theta))
         py = dist_hMpc * np.sin(np.deg2rad(theta))
 
+        # Define the length of the box    
+        if box_size_hMpc is None:
+            x_min, x_max = px.min(), px.max()
+            y_min, y_max = py.min(), py.max()
+        else:
+            x_min, x_max = -box_size_hMpc/2., box_size_hMpc/2.
+            y_min, y_max = -box_size_hMpc/2., box_size_hMpc/2.
+
         # Get the bin of each galaxy
         if nbins is None:
             nbins = int(nGalaxies / np.sqrt(gals_per_bins))
-        bins_x = np.linspace(px.min(), px.max(), nbins+1)
-        bins_y = np.linspace(py.min(), py.max(), nbins+1)
+
+        bins_x = np.linspace(x_min, x_max, nbins+1)
+        bins_y = np.linspace(y_min, y_max, nbins+1)
         digit_x = np.digitize(px, bins=bins_x)-1
         digit_y = np.digitize(py, bins=bins_y)-1
     
         px_map, py_map = np.meshgrid((bins_x[:-1]+bins_x[1:])/2.,
-        							(bins_y[:-1]+bins_y[1:])/2.)
+        							(bins_y[:-1]+bins_y[1:])/2.,
+                                    indexing='ij')
         e1_map = np.zeros((nbins, nbins), dtype=float)
         e2_map = np.zeros((nbins, nbins), dtype=float)
         self.N = np.zeros((nbins, nbins), dtype=int)
@@ -71,6 +81,8 @@ class ShearMap(object):
         self.py = py_map
         self.ex = ex_map
         self.ey = ey_map
+        self.e1 = e1_map
+        self.e2 = e2_map
 
     def __getitem__(self, key):
         return getattr(self, key)
