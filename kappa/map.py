@@ -37,6 +37,8 @@ class KappaMap(object):
         # Compute the shear map
         shear_map = shear.ShearMap(data=data, nbins=nbins, 
             gals_per_bins=gals_per_bins, box_size_hMpc=box_size_hMpc, cosmo=cosmo)
+        # save the shear map for reference
+        self.shear_map = shear_map
 
         self.px = shear_map.px      # in Mpc/h
         self.py = shear_map.px      # in Mpc/h

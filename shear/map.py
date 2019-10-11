@@ -25,6 +25,7 @@ class ShearMap(object):
         # Define some parameters...
         nGalaxies = len(data)
         Mpc_scale = self.set_Mpc_scale(dl=data['DL'])
+        sigma_critic = self.set_sigma_critic(dl=data['DL'], ds=data['DS'], dls=data['DLS'])
 
         # Compute distance and ellipticity components...
         dist, theta = gentools.sphere_angular_vector(data['RAJ2000'], data['DECJ2000'],
@@ -68,8 +69,13 @@ class ShearMap(object):
                 masky = digit_y==iy
                 mask = maskx*masky
                 if mask.sum()==0: continue
-                e1_map[ix, iy] = data['e1'][mask].mean() 
-                e2_map[ix, iy] = data['e2'][mask].mean()
+
+                weight = data['weight'][mask]/sigma_critic[mask]**2
+                m_cal = 1 + np.average(data['m'][mask], weights=weight)
+
+                e1_map[ix, iy] = np.average(data['e1'][mask]*sigma_critic[mask], weights=weight) / m_cal
+                e2_map[ix, iy] = np.average(data['e2'][mask]*sigma_critic[mask], weights=weight) / m_cal
+
                 self.N[ix, iy] = mask.sum()
 
         e_mod = np.sqrt(e1_map**2 + e2_map**2)
@@ -92,6 +98,13 @@ class ShearMap(object):
         self.Mpc_scale_mean = Mpc_scale.mean()
         return Mpc_scale
 
+    def set_sigma_critic(self, dl, ds, dls):
+        beta = dls/ds
+        sigma_critic = cvel**2/(4.*np.pi*G*(dl*1e6*pc)) * (1./beta) * (pc**2/Msun)
+        self.beta_mean = beta.mean()
+        self.sigma_critic = sigma_critic.mean()
+        return sigma_critic
+
     def QuickPlot(self, normed=True, cmap=None):
     	if cmap is None:
     		from matplotlib import cm
@@ -99,7 +112,7 @@ class ShearMap(object):
 
         emod = np.sqrt(self.ex**2+self.ey**2)
         self.quiveropts = dict(headlength=0, headwidth=0, headaxislength=0,
-                            width=0.1, pivot='middle', units='xy',
+                              pivot='middle', units='xy',
                               alpha=1, color='black')
         plt.figure()
         if normed:
