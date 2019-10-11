@@ -42,8 +42,8 @@ class KappaMap(object):
 
         self.px = shear_map.px      # in Mpc/h
         self.py = shear_map.px      # in Mpc/h
-        e1_map = shear_map.e1.T     # not sure about this transpose
-        e2_map = shear_map.e2.T     # not sure about this transpose
+        e1_map = shear_map.e1     # not sure about this transpose
+        e2_map = shear_map.e2     # not sure about this transpose
 
         # Equations from Jeffrey 2018, section 2.2
         # Fourier transform of the shear field
@@ -71,39 +71,74 @@ class KappaMap(object):
         T_Dconj[0, 0] = 0. + 0j        # for k=0 
         return T_Dconj
 
-    def gaussian_smooth(self, sigma_hkpc=10.):
+    def gaussian_filter(self, sigma_hkpc=10., truncate=5):
         ''' Apply gaussian filter to reduce high frequency noise
         '''
         dx = self.px[1,0] - self.px[0,0]    # pixel size in Mpc/h
         sigma_hMpc = sigma_hkpc * 1e-3
         sigma_pix = sigma_hMpc/dx
 
-        kE = ndimage.gaussian_filter(np.real(self.kappa), sigma=sigma_pix) 
-        kB = ndimage.gaussian_filter(np.imag(self.kappa), sigma=sigma_pix)
+        kE = ndimage.gaussian_filter(np.real(self.kappa), sigma=sigma_pix, truncate=truncate) 
+        kB = ndimage.gaussian_filter(np.imag(self.kappa), sigma=sigma_pix, truncate=truncate)
 
         smooth_kappa = kE + 1j*kB
         return smooth_kappa
 
 
-    def QuickPlot(self, normed=True, cmap=None):
+    def QuickPlot(self, sigma_hkpc=0., kappa_mode='E', cmap=None):
+        ''' Plot the reconstructed kappa map
+        kappa_mode: 'E', 'B', 'EB'
+        '''
         if cmap is None:
             from matplotlib import cm
-            cmap=cm.gist_heat_r
+            cmap=cm.jet
 
-        emod = np.sqrt(self.ex**2+self.ey**2)
-        self.quiveropts = dict(headlength=0, headwidth=0, headaxislength=0,
-                            width=0.1, pivot='middle', units='xy',
-                              alpha=1, color='black')
-        plt.figure()
-        if normed:
-            plt.quiver(self.px, self.py, self.ex/emod, self.ey/emod, emod, cmap=cmap, **self.quiveropts)
+
+        if sigma_hkpc>0:
+            kE = ndimage.gaussian_filter(np.real(self.kappa), sigma=sigma_pix) 
+            kB = ndimage.gaussian_filter(np.imag(self.kappa), sigma=sigma_pix)
         else:
-            plt.quiver(self.px, self.py, self.ex, self.ey, emod, cmap=cmap, **self.quiveropts)
-        cbar = plt.colorbar()
-        cbar.ax.set_ylabel('$\Vert \gamma \Vert$', fontsize=14)
-        plt.xlabel('$r\,[Mpc/h]$', fontsize=14)
-        plt.ylabel('$r\,[Mpc/h]$', fontsize=14)
-        plt.show()
+            kE = np.real(self.kappa)
+            kB = np.imag(self.kappa)
+
+        extent = [kappa_map.px.min(), kappa_map.px.max(),kappa_map.py.min(), kappa_map.py.max()]
+        vmin, vmax = kE.min(), kE.max()
+
+        if kappa_mode == 'E':
+            plt.figure()
+            plt.imshow(kE, extent=extent, cmap=cmap, origin='lower')
+            plt.xlabel('$r\,[Mpc/h]$', fontsize=14)
+            plt.ylabel('$r\,[Mpc/h]$', fontsize=14)
+            plt.title('Convergence map E-mode', fontsize=14)
+            cbar = plt.colorbar()
+            cbar.ax.set_ylabel(r'$\mathrm{\Delta\Sigma\,[\,h\,M_{\odot}\,pc^{-2}\,]}$', fontsize=14)
+            plt.show()
+        elif kappa_mode == 'B':
+            plt.figure()
+            plt.imshow(kB, extent=extent, cmap=cmap, origin='lower')
+            plt.xlabel('$r\,[Mpc/h]$', fontsize=14)
+            plt.ylabel('$r\,[Mpc/h]$', fontsize=14)
+            plt.title('Convergence map B-mode', fontsize=14)
+            cbar = plt.colorbar()
+            cbar.ax.set_ylabel(r'$\mathrm{\Delta\Sigma\,[\,h\,M_{\odot}\,pc^{-2}\,]}$', fontsize=14)
+            plt.show()
+        elif kappa_mode == 'EB':
+            plt.figure()
+            plt.subplot(121, aspect='equal') 
+            plt.imshow(kE, extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
+            plt.xlabel('$r\,[Mpc/h]$', fontsize=14)
+            plt.ylabel('$r\,[Mpc/h]$', fontsize=14)
+            plt.title('Convergence map E-mode', fontsize=14)
+
+            plt.subplot(122, aspect='equal')
+            plt.imshow(kB, extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
+            plt.xlabel('$r\,[Mpc/h]$', fontsize=14)
+            plt.ylabel('$r\,[Mpc/h]$', fontsize=14)
+            plt.title('Convergence map B-mode', fontsize=14)
+            cbar = plt.colorbar()
+            cbar.ax.set_ylabel(r'$\mathrm{\Delta\Sigma\,[\,h\,M_{\odot}\,pc^{-2}\,]}$', fontsize=14)
+            plt.show()
+
 
 '''
 # Shear orientado tangencialmente sin ruido
