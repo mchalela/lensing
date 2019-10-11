@@ -27,6 +27,9 @@ class KappaMap(object):
 
     def __init__(self, data=None, nbins=None, gals_per_bins=50., box_size_hMpc=None, cosmo=cosmo):
 
+        if data is None:
+            raise ValueError('KappaMap needs some data to work with...')
+
         # Set nbins
         if nbins is None:
             nbins = int(nGalaxies / np.sqrt(gals_per_bins))
@@ -37,8 +40,8 @@ class KappaMap(object):
 
         self.px = shear_map.px      # in Mpc/h
         self.py = shear_map.px      # in Mpc/h
-        e1_map = shear_map.e1
-        e2_map = shear_map.e2
+        e1_map = shear_map.e1.T     # not sure about this transpose
+        e2_map = shear_map.e2.T     # not sure about this transpose
 
         # Equations from Jeffrey 2018, section 2.2
         # Fourier transform of the shear field
@@ -55,7 +58,7 @@ class KappaMap(object):
     def _conjugate_inversion_kernel(self, nbins):
         ''' Define fourier grid for the kernel inversion
         '''
-        dx = self.px[0,1] - self.px[0,0]
+        dx = self.px[1,0] - self.px[0,0]
         dy = self.py[1,0] - self.py[0,0]
 
         # create fourier grid
@@ -69,12 +72,12 @@ class KappaMap(object):
     def gaussian_smooth(self, sigma_hkpc=10.):
         ''' Apply gaussian filter to reduce high frequency noise
         '''
-        dx = self.px[0,1] - self.px[0,0]    # pixel size in Mpc/h
+        dx = self.px[1,0] - self.px[0,0]    # pixel size in Mpc/h
         sigma_hMpc = sigma_hkpc * 1e-3
         sigma_pix = sigma_hMpc/dx
 
-        kE = ndimage.gaussian_filter(np.real(self.k), sigma=sigma_pix) 
-        kB = ndimage.gaussian_filter(np.imag(self.k), sigma=sigma_pix)
+        kE = ndimage.gaussian_filter(np.real(self.kappa), sigma=sigma_pix) 
+        kB = ndimage.gaussian_filter(np.imag(self.kappa), sigma=sigma_pix)
 
         smooth_kappa = kE + 1j*kB
         return smooth_kappa

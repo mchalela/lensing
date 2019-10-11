@@ -68,9 +68,9 @@ class ShearMap(object):
                 masky = digit_y==iy
                 mask = maskx*masky
                 if mask.sum()==0: continue
-                e1_map[iy,ix] = data['e1'][mask].mean() 
-                e2_map[iy,ix] = data['e2'][mask].mean()
-                self.N[iy,ix] = mask.sum()
+                e1_map[ix, iy] = data['e1'][mask].mean() 
+                e2_map[ix, iy] = data['e2'][mask].mean()
+                self.N[ix, iy] = mask.sum()
 
         e_mod = np.sqrt(e1_map**2 + e2_map**2)
         beta = np.arctan2(e2_map, e1_map)/2.
