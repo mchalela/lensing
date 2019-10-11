@@ -17,7 +17,7 @@ Msun = 1.989e30     # Solar mass (kg)
 
 class ShearMap(object):
 
-    def __init__(self, data=None, nbins=None, gals_per_bins=50., box_size_hMpc=None ,cosmo=cosmo):
+    def __init__(self, data=None, nbins=None, gals_per_bins=50., box_size_hMpc=None, cosmo=cosmo):
 
         if data is None:
             raise ValueError('ShearMap needs some data to work with...')
