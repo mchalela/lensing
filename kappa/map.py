@@ -78,8 +78,13 @@ class KappaMap(object):
         sigma_hMpc = sigma_hkpc * 1e-3
         sigma_pix = sigma_hMpc/dx
 
-        kE = ndimage.gaussian_filter(np.real(self.kappa), sigma=sigma_pix, truncate=truncate) 
-        kB = ndimage.gaussian_filter(np.imag(self.kappa), sigma=sigma_pix, truncate=truncate)
+        # resize the image
+        resize = 100
+        kE = ndimage.zoom(np.real(self.kappa), zoom=resize, order=0)
+        kB = ndimage.zoom(np.imag(self.kappa), zoom=resize, order=0)
+
+        kE = ndimage.gaussian_filter(kE, sigma=sigma_pix*resize, truncate=truncate) 
+        kB = ndimage.gaussian_filter(kB, sigma=sigma_pix*resize, truncate=truncate)
 
         smooth_kappa = kE + 1j*kB
         return smooth_kappa
@@ -95,13 +100,14 @@ class KappaMap(object):
 
 
         if sigma_hkpc>0:
-            kE = ndimage.gaussian_filter(np.real(self.kappa), sigma=sigma_pix) 
-            kB = ndimage.gaussian_filter(np.imag(self.kappa), sigma=sigma_pix)
+            k = self.gaussian_filter(sigma_hkpc)
+            kE = np.real(k)
+            kB = np.imag(k)
         else:
             kE = np.real(self.kappa)
             kB = np.imag(self.kappa)
 
-        extent = [kappa_map.px.min(), kappa_map.px.max(),kappa_map.py.min(), kappa_map.py.max()]
+        extent = [self.px.min(), self.px.max(),self.py.min(), self.py.max()]
         vmin, vmax = kE.min(), kE.max()
 
         if kappa_mode == 'E':
