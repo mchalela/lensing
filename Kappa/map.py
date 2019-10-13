@@ -7,7 +7,7 @@ from astropy.stats import bootstrap
 from astropy.utils import NumpyRNGContext
 from astropy.cosmology import LambdaCDM
 from scipy import fftpack, ndimage
-from lensing import gentools, shear 
+from .. import gentools, Shear 
 
 cosmo = LambdaCDM(H0=70, Om0=0.3, Ode0=0.7)
 cvel = 299792458.   # Speed of light (m.s-1)
@@ -41,7 +41,7 @@ class KappaMap(object):
     def _kappa_map(self, data, nbins, box_size_hMpc, cosmo, save_ref=True):
 
         # Compute the shear map
-        shear_map = shear.ShearMap(data=data, nbins=nbins, 
+        shear_map = Shear.ShearMap(data=data, nbins=nbins, 
                                     box_size_hMpc=box_size_hMpc, cosmo=cosmo)
 
         px = shear_map.px      # in Mpc/h

@@ -6,7 +6,7 @@ DES/
 SDSS/
 Extinction/
 redMapper_test/
-lenscat/grispy.py
-lenscat/read_cat_cut*
-densmodel/*zip
+LensCat/grispy.py
+LensCat/read_cat_cut*
+DensModel/*zip
 *.chain

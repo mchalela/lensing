@@ -5,7 +5,8 @@ import pandas as pd
 from astropy.stats import bootstrap
 from astropy.utils import NumpyRNGContext
 from astropy.cosmology import LambdaCDM
-from lensing import gentools 
+
+from .. import gentools 
 
 cosmo = LambdaCDM(H0=70, Om0=0.3, Ode0=0.7)
 cvel = 299792458. 	# Speed of light (m.s-1)

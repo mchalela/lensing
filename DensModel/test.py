@@ -8,7 +8,7 @@ import emcee
 #import corner
 from astropy.cosmology import Planck15 , LambdaCDM
 from astropy.modeling import models, fitting
-from lensing import shear, densmodel
+from lensing import Shear, DensModel
 
 
 import scipy.optimize
@@ -16,7 +16,7 @@ import scipy.optimize
 # Toy Model
 
 z=0.2
-DN = densmodel.Density(z=z, cosmo=Planck15)
+DN = DensModel.Density(z=z, cosmo=Planck15)
 logM200 = np.log10(2.3e14)
 #offset = 0.33
 #p_cen = 0.72
@@ -33,7 +33,7 @@ shear_model = bcg+nfw
 shear_model *= 1+np.random.normal(0., 0.2, r.shape)
 shear_err = 0.2*shear_model
 
-DNM = densmodel.DensityModels(z=z, cosmo=Planck15)
+DNM = DensModel.DensityModels(z=z, cosmo=Planck15)
 #bcg_init = DNM.BCG_with_M200()
 bcg_init = DNM.BCG()
 nfw_init = DNM.NFW()
@@ -43,13 +43,13 @@ shear_init = DNM.AddModels([bcg_init, nfw_init])#, shalo_init])
 #shear_init = DNM.SIS()
 
 start_params = [12., 13.]
-fitter = densmodel.Fitter(r, shear_model, shear_err, shear_init, start_params)
+fitter = DensModel.Fitter(r, shear_model, shear_err, shear_init, start_params)
 out_min = fitter.Minimize(method='GLP')
-densmodel.Fitter2Model(shear_init, out_min.param_values)
+DensModel.Fitter2Model(shear_init, out_min.param_values)
 
 '''
 start_params = [11., 14.]
-fitter = densmodel.Fitter(r, shear, shear_err, shear_init, start_params)
+fitter = DensModel.Fitter(r, shear, shear_err, shear_init, start_params)
 nwalkers=4; steps=300; ndim=len(shear_init.parameters)
 sampler, samples_file = fitter.MCMC(method='GLP',nwalkers=nwalkers, steps=steps, sample_name='test')
 '''

@@ -1,4 +1,3 @@
-#import os, platform
 import numpy as np
 from astropy.cosmology import LambdaCDM
 cosmo = LambdaCDM(H0=70, Om0=0.3, Ode0=0.7)

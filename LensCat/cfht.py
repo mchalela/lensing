@@ -3,12 +3,13 @@ import numpy as np
 import pandas as pd
 from astropy.io import fits
 import h5py
-from lensing.gentools import classonly
-from main import Survey, read_columns, cat_paths
 
-class KiDS(Survey):
+from ..gentools import classonly
+from .main import Survey, read_columns, cat_paths
+
+class CFHT(Survey):
 	
-	name = 'KiDS'
+	name = 'CFHT'
 	region = np.zeros(100, dtype=bool).reshape((10,10))
 	region[6:,6:] = True
 	
@@ -23,15 +24,19 @@ class KiDS(Survey):
 
 		# Check some things...
 		if fields is None:
-			fields = ['G9','G12','G15','G23','GS']
+			fields = ['W1','W2','W3','W4']
 		if columns is None:
-			columns = ['RAJ2000','DECJ2000','Z_B','e1','e2','m','weight','ODDS','fitclass','MASK']
+			columns = ['RAJ2000','DECJ2000','Z_B','e1','e2','m','weight','ODDS','fitclass','MASK','c2']
 
 		# Somehow we load the data and save it in cls.data
-		field_paths = [cat_paths.kids[field] for field in fields]
+		field_paths = [cat_paths.cfht[field] for field in fields]
 		dl = pd.concat( [read_columns(path, columns) for path in field_paths] ).reset_index(drop=True)
 		catid = cls.name+'.'+pd.DataFrame({'CATID': np.arange(dl.shape[0]).astype(str)})
 		cls.data = pd.concat([catid,dl], axis=1)
+		
+		# Additive correction, see Heymans et al (2012) section 4.1
+		cls.data['e2'] -= cls.data['c2']
+		cls.data.drop(columns='c2', inplace=True)
 
 		# Science cuts...
 		# fitclass=0 for galaxies

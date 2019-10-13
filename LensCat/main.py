@@ -6,7 +6,8 @@ from grispy import GriSPy
 import itertools
 from astropy.io import fits
 from astropy.table import Table
-from lensing.gentools import classonly
+
+from ..gentools import classonly
 '''
 Que tipo de comportamiento espero?
 
