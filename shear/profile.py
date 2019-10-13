@@ -16,7 +16,7 @@ Msun = 1.989e30 	# Solar mass (kg)
 
 class Profile(object):
 
-	def __init__(self, data=None, rin_hMpc=0.1, rout_hMpc=10., bins=10, space='log', cosmo=cosmo, boot_flag=True, boot_n=100):
+	def __init__(self, data=None, rin_hMpc=0.1, rout_hMpc=10., bins=10, space='log', boot_n=0, cosmo=cosmo):
 		
 		# Create bins...
 		self.set_bins(rin_hMpc=rin_hMpc, rout_hMpc=rout_hMpc, bins=bins, space=space)
@@ -61,7 +61,7 @@ class Profile(object):
 				stat_error_den = weight.sum()**2
 				self.stat_error[i] = np.sqrt(stat_error_num/stat_error_den) / m_cal[i]
 
-				if boot_flag:
+				if boot_n>0:
 					err_t, err_x = self._boot_error(et[mask]*sigma_critic[mask],
 													ex[mask]*sigma_critic[mask], 
 													weight, boot_n)

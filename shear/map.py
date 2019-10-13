@@ -105,10 +105,7 @@ class ShearMap(object):
         self.sigma_critic = sigma_critic.mean()
         return sigma_critic
 
-    def QuickPlot(self, normed=True, cmap=None):
-    	if cmap is None:
-    		from matplotlib import cm
-    		cmap=cm.gist_heat_r
+    def QuickPlot(self, normed=True, cmap='gist_heat_r'):
 
         emod = np.sqrt(self.ex**2+self.ey**2)
         self.quiveropts = dict(headlength=0, headwidth=0, headaxislength=0,
