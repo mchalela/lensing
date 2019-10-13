@@ -54,7 +54,10 @@ def sphere_angular_vector(ra, dec, ra_center, dec_center, units='rad'):
     distance, orientation : Quantity or float
         Polar vector on the sphere in units defined by 'units'.
     '''
-
+    if units not in ['rad', 'deg']:
+        raise ValueError('Argument units="{}" not recognized. '
+            'Options are: "rad", "deg".'.format(units))
+        
     if units == 'deg':
         ra, dec = np.deg2rad(ra), np.deg2rad(dec)
         ra_center, dec_center = np.deg2rad(ra_center), np.deg2rad(dec_center)
