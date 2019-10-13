@@ -34,20 +34,19 @@ class KappaMap(object):
         if nbins is None:
             nbins = int(nGalaxies / np.sqrt(gals_per_bins))
 
-        # Compute the shear map
-        shear_map = shear.ShearMap(data=data, nbins=nbins, 
+        # Compute the shear map and save it for reference
+        self.shear_map = shear.ShearMap(data=data, nbins=nbins, 
             gals_per_bins=gals_per_bins, box_size_hMpc=box_size_hMpc, cosmo=cosmo)
-        # save the shear map for reference
-        self.shear_map = shear_map
 
-        self.px = shear_map.px      # in Mpc/h
-        self.py = shear_map.px      # in Mpc/h
-        e1_map = shear_map.e1     # not sure about this transpose
-        e2_map = shear_map.e2     # not sure about this transpose
+        self.px = self.shear_map.px      # in Mpc/h
+        self.py = self.shear_map.px      # in Mpc/h
+        dx = self.px[1,0]-self.px[0,0]  
+        dy = self.py[1,0]-self.py[0,0]
+        self.bin_size = (dx, dy)    # in Mpc/h
 
         # Equations from Jeffrey 2018, section 2.2
         # Fourier transform of the shear field
-        T_shear = fftpack.fft2( e1_map + 1j*e2_map )
+        T_shear = fftpack.fft2( self.shear_map.e1 + 1j*self.shear_map.e2 )
 
         # Compute conjugate inversion kernel
         T_Dconj = self._conjugate_inversion_kernel(nbins)
@@ -60,8 +59,8 @@ class KappaMap(object):
     def _conjugate_inversion_kernel(self, nbins):
         ''' Define fourier grid for the kernel inversion
         '''
-        dx = self.px[1,0] - self.px[0,0]
-        dy = self.py[1,0] - self.py[0,0]
+        dx = self.bin_size[0]
+        dy = self.bin_size[1]
 
         # create fourier grid
         k_x0, k_y0 = fftpack.fftfreq(nbins, d=dx), fftpack.fftfreq(nbins, d=dy)
@@ -71,15 +70,15 @@ class KappaMap(object):
         T_Dconj[0, 0] = 0. + 0j        # for k=0 
         return T_Dconj
 
-    def gaussian_filter(self, sigma_hkpc=10., truncate=5):
+    def gaussian_filter(self, sigma_hkpc=10., truncate=5, resize=1):
         ''' Apply gaussian filter to reduce high frequency noise
+        resize is good for smooth plots, recomended: resize=100
         '''
-        dx = self.px[1,0] - self.px[0,0]    # pixel size in Mpc/h
+        dx = self.bin_size[0]    # pixel size in Mpc/h
         sigma_hMpc = sigma_hkpc * 1e-3
         sigma_pix = sigma_hMpc/dx
 
         # resize the image
-        resize = 100
         kE = ndimage.zoom(np.real(self.kappa), zoom=resize, order=0)
         kB = ndimage.zoom(np.imag(self.kappa), zoom=resize, order=0)
 
@@ -98,7 +97,6 @@ class KappaMap(object):
             from matplotlib import cm
             cmap=cm.jet
 
-
         if sigma_hkpc>0:
             k = self.gaussian_filter(sigma_hkpc)
             kE = np.real(k)
@@ -113,83 +111,34 @@ class KappaMap(object):
         if kappa_mode == 'E':
             plt.figure()
             plt.imshow(kE, extent=extent, cmap=cmap, origin='lower')
-            plt.xlabel('$r\,[Mpc/h]$', fontsize=14)
-            plt.ylabel('$r\,[Mpc/h]$', fontsize=14)
-            plt.title('Convergence map E-mode', fontsize=14)
+            plt.xlabel('$r\,[Mpc/h]$', fontsize=12)
+            plt.ylabel('$r\,[Mpc/h]$', fontsize=12)
+            plt.title('E-mode', fontsize=14)
             cbar = plt.colorbar()
             cbar.ax.set_ylabel(r'$\mathrm{\Delta\Sigma\,[\,h\,M_{\odot}\,pc^{-2}\,]}$', fontsize=14)
             plt.show()
         elif kappa_mode == 'B':
             plt.figure()
             plt.imshow(kB, extent=extent, cmap=cmap, origin='lower')
-            plt.xlabel('$r\,[Mpc/h]$', fontsize=14)
-            plt.ylabel('$r\,[Mpc/h]$', fontsize=14)
-            plt.title('Convergence map B-mode', fontsize=14)
+            plt.xlabel('$r\,[Mpc/h]$', fontsize=12)
+            plt.ylabel('$r\,[Mpc/h]$', fontsize=12)
+            plt.title('B-mode', fontsize=14)
             cbar = plt.colorbar()
             cbar.ax.set_ylabel(r'$\mathrm{\Delta\Sigma\,[\,h\,M_{\odot}\,pc^{-2}\,]}$', fontsize=14)
             plt.show()
         elif kappa_mode == 'EB':
-            plt.figure()
-            plt.subplot(121, aspect='equal') 
-            plt.imshow(kE, extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
-            plt.xlabel('$r\,[Mpc/h]$', fontsize=14)
-            plt.ylabel('$r\,[Mpc/h]$', fontsize=14)
-            plt.title('Convergence map E-mode', fontsize=14)
+            fig, ax = plt.subplots(nrows=1, ncols=2)
+            ax[0].set(aspect='equal')
+            im = ax[0].imshow(kE, extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
+            ax[0].set_xlabel('$r\,[Mpc/h]$', fontsize=12)
+            ax[0].set_ylabel('$r\,[Mpc/h]$', fontsize=12)
+            ax[0].set_title('E-mode', fontsize=12)
 
-            plt.subplot(122, aspect='equal')
-            plt.imshow(kB, extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
-            plt.xlabel('$r\,[Mpc/h]$', fontsize=14)
-            plt.ylabel('$r\,[Mpc/h]$', fontsize=14)
-            plt.title('Convergence map B-mode', fontsize=14)
-            cbar = plt.colorbar()
-            cbar.ax.set_ylabel(r'$\mathrm{\Delta\Sigma\,[\,h\,M_{\odot}\,pc^{-2}\,]}$', fontsize=14)
-            plt.show()
+            ax[1].set(aspect='equal')
+            ax[1].imshow(kB, extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
+            ax[1].set_xlabel('$r\,[Mpc/h]$', fontsize=12)
+            #ax[1].set_ylabel('$r\,[Mpc/h]$', fontsize=12)
+            ax[1].set_title('B-mode', fontsize=12)
 
-
-'''
-# Shear orientado tangencialmente sin ruido
-def e_comp(x,y):
-
-    r = (x**2+y**2)**0.5
-    e = 1./(2*r)
-    th= np.arctan2(y,x)  #revisar signo del angulo
-
-    #1er cuadrante
-    m_th = (y>0.)*(x>0.)
-    th[m_th] = th[m_th] + np.pi/2.
-    #2do cuadrante
-    m_th = (y>0.)*(x<0.)
-    th[m_th] = th[m_th] - np.pi/2.      
-    #3er cuadrante
-    m_th = (y<0.)*(x<0.)
-    th[m_th] = np.pi*3./2. - abs(th[m_th])
-    #4to cuadrante
-    m_th = (y<0.)*(x>0.)
-    th[m_th] = np.pi/2. - abs(th[m_th])
-
-    # add noise to the angle
-    #th += np.random.normal(0, np.pi/8, size=th.shape)
-
-    e1 = e*np.cos(2*th)
-    e2 = e*np.sin(2*th)
-
-    #~ ex = e1 + e2*np.cos(np.pi/4.)
-    #~ ey = e2*np.sin(np.pi/4.)
-    ex = e*np.cos(th)
-    ey = e*np.sin(th)   
-
-    #return ex, ey, e
-    return e1, e2, e
-
-
-
-"""PLOTTING"""
-fig = plt.figure()
-plt.imshow(np.real(k))
-fig = plt.figure()
-plt.imshow(kE)
-
-fig = plt.figure()
-ax = Axes3D(fig)
-ax.plot_surface(x, y, np.real(k), cmap='viridis')
-'''
+            cbar = fig.colorbar(im,  ax=ax.ravel().tolist(), orientation='horizontal')
+            cbar.ax.set_xlabel(r'$\mathrm{\Delta\Sigma\,[\,h\,M_{\odot}\,pc^{-2}\,]}$', fontsize=12)
