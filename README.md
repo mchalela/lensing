@@ -1,18 +1,13 @@
-# Lensing: Module for weak lensing analysis
+# Lensing: Package for weak lensing analysis
 
-Lensing is a set of tools to work with lensing catalogs, measure density profiles and fit compound density models. The module is divided into several submodules: lenscat, shear, densmodel, gentools and kappa (not implemented yet).
+Lensing is a set of tools to work with lensing catalogs, measure density profiles and fit compound density models. The package is divided into several modules: LensCat, DensModel, Shear, Kappa and gentools.
 
-## Lenscat
-Lenscat allows you to easily create source catalogues for your lenses. Right now the available lensing catalogues are KiDS, CS82, CFHTLens... Each catalogue has different properties so the idea is to provide a unified interface and namespace for all of them.
+- **LensCat**: Allows you to easily create source catalogues for your lenses. Right now the available lensing catalogues are KiDS, CS82, CFHTLens... Each catalogue has different properties so the idea is to provide a unified interface and namespace for all of them.
 
-## Shear
-Shear provides a few methods to compute shear profiles and maps (not implemented yet).
+- **Shear**: Provides a few methods to compute shear profiles and maps.
 
-## Kappa
-This module computes the kappa density map using the KS inversion method (not implemented yet).
+- **Kappa**: Computes the kappa density map using the Kaiser-Squires inversion method.
 
-## Densmodel
-This module defines different mass models to fit the Shear profiles.
+- **DensModel**: Defines different mass models and fitting methods to fit the Shear profiles.
 
-## Gentools
-This is a module for general tools that are used by the rest of the modules.
+- **gentools**: This is a module for general tools that are used by the rest of the modules.
