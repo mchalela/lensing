@@ -29,7 +29,33 @@ kids_cat = LensCat.KiDS.bubble_neighbors(centre=cat[['RA','DEC']], radii=R_deg, 
 cfht_cat = LensCat.CFHT.bubble_neighbors(centre=cat[['RA','DEC']], radii=R_deg, append_data=cat, njobs=40)
 ```
 
+And thats it! You can save your catalogues individually or you can add them in a single catalogue.
+```
+cs82_cat.write_to('gx_CS82.fits')
+kids_cat.write_to('gx_KiDS.fits')
+cfht_cat.write_to('gx_CFHT.fits')
 
+# Or, you can add them and then save the file.
+cat = cs82_cat + kids_cat + cfht_cat
+cat.write_to('gx_'+cat.name+'.fits')
+```
+
+That was the easy way. By default, if you search galaxies directly with the **bubble_neighbors()** method you will load only these columns from the catalogues: RAJ2000, DECJ2000, Z_B, e1, e2, m, weight, ODDS, fitclass, MASK. And in particular, the CFHTLens catalogue will also load the c2 additive bias column, correct the e2 component of ellipticity and drop the c2 column from the catalogue, thats why you wont see it.
+
+This is because the catalogue needs to be loaded in memory first with the **load(fields=None, columns=None, science_cut=True)** method. If you don't load the catalogue before searching for galaxies, it will be loaded automatically with those default columns. You can control what columns and fields are loaded.
+```
+# Lets say you want from the CS82 those columns and also the BPZ_LOW95
+columns = ['RAJ2000','DECJ2000','Z_B','e1','e2','m','weight','ODDS','fitclass','MASK', 'BPZ_LOW95']
+LensCat.CS82.load(columns=columns)
+cs82_cat = LensCat.CS82.bubble_neighbors(centre=cat[['RA','DEC']], radii=R_deg, append_data=cat, njobs=40)
+
+# Or lets say you want from the KiDS catalogue the default columns, but
+# only in the G9 and G12 fields.
+LensCat.KiDS.load(fields=['G9','G12'])
+kids_cat = LensCat.KiDS.bubble_neighbors(centre=cat[['RA','DEC']], radii=R_deg, append_data=cat, njobs=40)
+```
+
+The science_cut will usually be True, and it gives you all the galaxies with **fitclass=0**, **MASK<=1** and **weight>0**. So if you want these cut you need to load these columns. For the CFHT in particular, the c2 column must be loaded.
 
 
 ## Catalogue Format
