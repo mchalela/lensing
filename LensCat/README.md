@@ -10,8 +10,9 @@ Lets say you have your lens catalogue in a pandas data frame with an id, coordin
 Now, you want all source galaxies in a radius of 1 Mpc. 
 
 ```python
+import numpy as np
 import pandas as pd
-from lensing import lenscat, gentools
+from lensing import gentools, LensCat
 from astropy.cosmology import LambdaCDM
 cosmo = LambdaCDM(H0=70, Om0=0.3, Ode0=0.7)  # Standard cosmology
 
