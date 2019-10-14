@@ -41,6 +41,7 @@ cat = cs82_cat + kids_cat + cfht_cat
 cat.write_to('gx_'+cat.name+'.fits')
 ```
 
+### Load different columns
 That was the easy way. By default, if you search for galaxies directly with the **bubble_neighbors()** method you will load only these columns from the catalogues: RAJ2000, DECJ2000, Z_B, e1, e2, m, weight, ODDS, fitclass, MASK. And in particular, the CFHTLens catalogue will also load the c2 additive bias column, correct the e2 component of ellipticity and drop the c2 column from the catalogue, thats why you wont see it.
 
 This is because the catalogue needs to be loaded in memory first with the **load(fields=None, columns=None, science_cut=True)** method. If you don't load the catalogue before searching for galaxies, it will be loaded automatically with those default columns. You can control what columns and fields are loaded.
@@ -58,6 +59,15 @@ kids_cat = LensCat.KiDS.bubble_neighbors(centre=df[['RA','DEC']], radii=R_deg, a
 
 The science_cut will usually be True, and it gives you all the galaxies with **fitclass=0**, **MASK<=1** and **weight>0**. So if you want these cut you need to load these columns. For the CFHT in particular, the c2 column must be loaded.
 
+### Recommendations
+These are things you probably want and should be class methods, but for now you have to do it manually...
+
+You may want to apply some cuts before saving your catalogues to a file, like removing foreground galaxies.
+```python
+mask = cs82_cat.data['Z_B']>cs82_cat.data['z']
+cs82_cat.data = cs82_cat.data[mask]
+# Note: this will be a method soon. cs82_cat.remove_foregrounds()
+```
 
 If you want to save your catalogue to be used with the Shear or Kappa modules, you need to compute the angular diameter distances for the lensing analysis. For example:
 ```python
