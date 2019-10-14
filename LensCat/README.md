@@ -40,7 +40,7 @@ cat = cs82_cat + kids_cat + cfht_cat
 cat.write_to('gx_'+cat.name+'.fits')
 ```
 
-That was the easy way. By default, if you search galaxies directly with the **bubble_neighbors()** method you will load only these columns from the catalogues: RAJ2000, DECJ2000, Z_B, e1, e2, m, weight, ODDS, fitclass, MASK. And in particular, the CFHTLens catalogue will also load the c2 additive bias column, correct the e2 component of ellipticity and drop the c2 column from the catalogue, thats why you wont see it.
+That was the easy way. By default, if you search for galaxies directly with the **bubble_neighbors()** method you will load only these columns from the catalogues: RAJ2000, DECJ2000, Z_B, e1, e2, m, weight, ODDS, fitclass, MASK. And in particular, the CFHTLens catalogue will also load the c2 additive bias column, correct the e2 component of ellipticity and drop the c2 column from the catalogue, thats why you wont see it.
 
 This is because the catalogue needs to be loaded in memory first with the **load(fields=None, columns=None, science_cut=True)** method. If you don't load the catalogue before searching for galaxies, it will be loaded automatically with those default columns. You can control what columns and fields are loaded.
 ```python
@@ -57,6 +57,22 @@ kids_cat = LensCat.KiDS.bubble_neighbors(centre=cat[['RA','DEC']], radii=R_deg, 
 
 The science_cut will usually be True, and it gives you all the galaxies with **fitclass=0**, **MASK<=1** and **weight>0**. So if you want these cut you need to load these columns. For the CFHT in particular, the c2 column must be loaded.
 
+
+If you want to save your catalogue to be used with the Shear or Kappa modules, you need to compute the angular diameter distances for the lensing analysis. For example:
+```python
+DL = np.array(cosmo.angular_diameter_distance(cs82_cat.data['z']))
+DS = np.array(cosmo.angular_diameter_distance(cs82_cat.data['Z_B']))
+DLS= np.array(cosmo.angular_diameter_distance_z1z2(cs82_cat.data['z'], cs82_cat.data['Z_B']))
+
+# Save the columns after the IDLENS column. Omit the index if you dont care about the order
+index = cs82_cat.data.columns.get_loc('IDLENS')
+cs82_cat.add_column(index=index, name='DLS', data=DLS)
+cs82_cat.add_column(index=index, name='DL', data=DL)
+cs82_cat.add_column(index=index, name='DS', data=DS)
+
+# Now you have what you need for Shear and Kappa
+cs82_cat.write_to('gx_CS82.fits')
+```
 
 ## Catalogue Format
 
