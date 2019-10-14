@@ -17,17 +17,17 @@ from astropy.cosmology import LambdaCDM
 cosmo = LambdaCDM(H0=70, Om0=0.3, Ode0=0.7)  # Standard cosmology
 
 # Read your lens catalogue as a pandas DataFrame
-cat = pd.read_csv('path/to/lens/catalogue.csv')
+df = pd.read_csv('path/to/lens/catalogue.csv')
 
 # We need the search radius in degrees, so we use Mpc2deg() from the gentools module.
 R_Mpc = 1.
-R_deg = gentools.Mpc2deg(R_Mpc=R_Mpc, z=cat['z'], cosmo=cosmo)
+R_deg = gentools.Mpc2deg(R_Mpc=R_Mpc, z=df['z'], cosmo=cosmo)
 
 # Search for galaxies in the survey you want, and append your lens catalogue.
 # You can lunch a parallel search in njobs.
-cs82_cat = LensCat.CS82.bubble_neighbors(centre=cat[['RA','DEC']], radii=R_deg, append_data=cat, njobs=40)
-kids_cat = LensCat.KiDS.bubble_neighbors(centre=cat[['RA','DEC']], radii=R_deg, append_data=cat, njobs=40)
-cfht_cat = LensCat.CFHT.bubble_neighbors(centre=cat[['RA','DEC']], radii=R_deg, append_data=cat, njobs=40)
+cs82_cat = LensCat.CS82.bubble_neighbors(centre=df[['RA','DEC']], radii=R_deg, append_data=df, njobs=40)
+kids_cat = LensCat.KiDS.bubble_neighbors(centre=df[['RA','DEC']], radii=R_deg, append_data=df, njobs=40)
+cfht_cat = LensCat.CFHT.bubble_neighbors(centre=df[['RA','DEC']], radii=R_deg, append_data=df, njobs=40)
 ```
 
 And thats it! You can save your catalogues individually or you can add them in a single catalogue.
@@ -48,12 +48,12 @@ This is because the catalogue needs to be loaded in memory first with the **load
 # Lets say you want from the CS82 those columns and also the BPZ_LOW95
 columns = ['RAJ2000','DECJ2000','Z_B','e1','e2','m','weight','ODDS','fitclass','MASK', 'BPZ_LOW95']
 LensCat.CS82.load(columns=columns)
-cs82_cat = LensCat.CS82.bubble_neighbors(centre=cat[['RA','DEC']], radii=R_deg, append_data=cat, njobs=40)
+cs82_cat = LensCat.CS82.bubble_neighbors(centre=df[['RA','DEC']], radii=R_deg, append_data=df, njobs=40)
 
 # Or lets say you want from the KiDS catalogue the default columns, but
 # only in the G9 and G12 fields.
 LensCat.KiDS.load(fields=['G9','G12'])
-kids_cat = LensCat.KiDS.bubble_neighbors(centre=cat[['RA','DEC']], radii=R_deg, append_data=cat, njobs=40)
+kids_cat = LensCat.KiDS.bubble_neighbors(centre=df[['RA','DEC']], radii=R_deg, append_data=df, njobs=40)
 ```
 
 The science_cut will usually be True, and it gives you all the galaxies with **fitclass=0**, **MASK<=1** and **weight>0**. So if you want these cut you need to load these columns. For the CFHT in particular, the c2 column must be loaded.
