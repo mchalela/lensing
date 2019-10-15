@@ -37,6 +37,7 @@ nfw_comb = DN.NFWCombined(r_h, logM200_h=13., disp_offset_h=0.1, p_cen=1.)
 ```
 
 ### Second Halo Term
+For this you need to install the **camb** package to compute the power spectrum.
 ```python
 second_halo = DN.SecondHalo(r_h, logM200_h=13., Delta=200.)
 ```
