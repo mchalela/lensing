@@ -78,7 +78,7 @@ start_params = [13., 0.2, 0.7]  # This is in order: logM200_h=13, disp_offset=0.
 fitter = DensModel.Fitter(r=profile.r_hMpc,
                           shear=profile.shear, 
                           shear_err=profile.shear_error, 
-			                    model=shear_model, 
+			  model=shear_model, 
                           start_params=start_params)
 ```
 
