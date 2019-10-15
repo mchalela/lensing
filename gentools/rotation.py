@@ -49,8 +49,8 @@ def equatorial_coordinates_rotation(ra, dec, ra_center, dec_center, angle, units
     theta = dec
     theta = np.pi/2. - theta                # theta is measured from the zenith
 
-    ax_phi = np.deg2rad(ra_center)
-    ax_theta = np.deg2rad(dec_center)
+    ax_phi = ra_center
+    ax_theta = dec_center
     ax_theta = np.pi/2. - ax_theta          # ax_theta is measured from the zenith
 
     ax = np.sin(theta)*np.cos(phi)
