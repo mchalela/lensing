@@ -50,6 +50,12 @@ class KappaMap(object):
         dy = py[0,1]-py[0,0]
         bin_size = (dx, dy)    # in Mpc/h
 
+        # Save shear map for reference
+        if save_ref:
+            self.shear_map = shear_map
+            self.px, self.py = px, py      # in Mpc/h
+            self.bin_size = bin_size
+
         # Equations from Jeffrey 2018, section 2.2
         # Fourier transform of the shear field
         T_shear = fftpack.fft2( shear_map.e1 + 1j*shear_map.e2 )
@@ -60,12 +66,6 @@ class KappaMap(object):
         # Compute kappa in fourier space and inverse transform
         T_kappa = T_shear * T_Dconj
         kappa_map = fftpack.ifft2(T_kappa)
-
-        # Save shear map for reference
-        if save_ref:
-            self.shear_map = shear_map
-            self.px, self.py = px, py      # in Mpc/h
-            self.bin_size = bin_size
 
         return kappa_map
 
@@ -141,17 +141,17 @@ class KappaMap(object):
             return smooth_kappa
 
 
-    def QuickPlot(self, sigma_hkpc=0., plot_err=False, cmap='jet'):
+    def QuickPlot(self, sigma_hkpc=0., resize=1, plot_err=False, cmap='jet'):
         ''' Plot the reconstructed kappa map.
         '''
 
         if sigma_hkpc>0:
             if plot_err:
-                k, k_err = self.gaussian_filter(sigma_hkpc, apply_to_err=True)
+                k, k_err = self.gaussian_filter(sigma_hkpc, resize=resize, apply_to_err=True)
                 kE, kB = k.real, k.imag
                 kE_err, kB_err = k_err.real, k_err.imag
             else:
-                k = self.gaussian_filter(sigma_hkpc)
+                k = self.gaussian_filter(sigma_hkpc, resize=resize)
                 kE, kB = k.real, k.imag                
         else:
             if plot_err:
@@ -167,13 +167,13 @@ class KappaMap(object):
             fig, ax = plt.subplots(nrows=1, ncols=2)
             ax[0].set(aspect='equal')
             im = ax[0].imshow(mE, extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
-            ax[0].set_xlabel('$r\,[Mpc/h]$', fontsize=12)
-            ax[0].set_ylabel('$r\,[Mpc/h]$', fontsize=12)
+            ax[0].set_xlabel('$x\,[Mpc/h]$', fontsize=12)
+            ax[0].set_ylabel('$y\,[Mpc/h]$', fontsize=12)
             ax[0].set_title('E-mode', fontsize=12)
 
             ax[1].set(aspect='equal')
             ax[1].imshow(mB, extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
-            ax[1].set_xlabel('$r\,[Mpc/h]$', fontsize=12)
+            ax[1].set_xlabel('$x\,[Mpc/h]$', fontsize=12)
             ax[1].set_title('B-mode', fontsize=12)
 
             cbar = fig.colorbar(im,  ax=ax.ravel().tolist(), orientation='horizontal')
