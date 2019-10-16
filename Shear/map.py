@@ -55,7 +55,7 @@ class ShearMap(object):
     
         px_map, py_map = np.meshgrid((bins_x[:-1]+bins_x[1:])/2.,
         							(bins_y[:-1]+bins_y[1:])/2.,
-                                    indexing='ij')
+                                    indexing='xy')
         e1_map = np.zeros((nbins, nbins), dtype=float)
         e2_map = np.zeros((nbins, nbins), dtype=float)
         self.N = np.zeros((nbins, nbins), dtype=int)
@@ -72,10 +72,10 @@ class ShearMap(object):
                 weight = data['weight'][mask]/sigma_critic[mask]**2
                 m_cal = 1 + np.average(data['m'][mask], weights=weight)
 
-                e1_map[ix, iy] = np.average(data['e1'][mask]*sigma_critic[mask], weights=weight) / m_cal
-                e2_map[ix, iy] = np.average(data['e2'][mask]*sigma_critic[mask], weights=weight) / m_cal
+                e1_map[iy, ix] = np.average(data['e1'][mask]*sigma_critic[mask], weights=weight) / m_cal
+                e2_map[iy, ix] = np.average(data['e2'][mask]*sigma_critic[mask], weights=weight) / m_cal
 
-                self.N[ix, iy] = mask.sum()
+                self.N[iy, ix] = mask.sum()
 
         e_mod = np.sqrt(e1_map**2 + e2_map**2)
         beta = np.arctan2(e2_map, e1_map)/2.

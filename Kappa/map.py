@@ -46,8 +46,8 @@ class KappaMap(object):
 
         px = shear_map.px      # in Mpc/h
         py = shear_map.py      # in Mpc/h
-        dx = px[1,0]-px[0,0]  
-        dy = py[0,1]-py[0,0]
+        dx = px[0,1]-px[0,0]  
+        dy = py[1,0]-py[0,0]
         bin_size = (dx, dy)    # in Mpc/h
 
         # Save shear map for reference
@@ -78,7 +78,7 @@ class KappaMap(object):
 
         # create fourier grid
         k_x0, k_y0 = fftpack.fftfreq(nbins, d=dx), fftpack.fftfreq(nbins, d=dy)
-        kx, ky = np.meshgrid(k_x0, k_y0, indexing='ij')
+        kx, ky = np.meshgrid(k_x0, k_y0, indexing='xy')
 
         T_Dconj = (kx**2 - ky**2 - 2j*kx*ky) / (kx**2 + ky**2)  # for k!=0
         T_Dconj[0, 0] = 0. + 0j        # for k=0 
