@@ -82,4 +82,5 @@ fitter = DensModel.Fitter(r=profile.r_hMpc,
                           start_params=start_params)
 ```
 
+You can now use the fitter.Minimize() or fitter.MCMC() methods. Minimize() uses a the scipy.optimize.curve_fit() method and is better use this one when you just want a simple model like a SIS or NFW. When computing a compound model it's better to use the MCMC(). This one uses the emcee library to sample the parameter space and then find the maximum likelihood.
 
