@@ -177,7 +177,7 @@ class KappaMap(object):
             ax[1].set_title('B-mode', fontsize=12)
 
             cbar = fig.colorbar(im,  ax=ax.ravel().tolist(), orientation='horizontal')
-            cbar.ax.set_xlabel(r'$\mathrm{\Delta\Sigma\,[\,h\,M_{\odot}\,pc^{-2}\,]}$', fontsize=12)
+            cbar.ax.set_xlabel(r'$\mathrm{\Sigma\,[\,h\,M_{\odot}\,pc^{-2}\,]}$', fontsize=12)
             plt.suptitle(title, fontsize=14)
             plt.show()
             return None

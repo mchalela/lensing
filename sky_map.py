@@ -101,7 +101,7 @@ m.scatter(x_sdss,y_sdss,marker='s',c='silver', s=5,lw=1, alpha=0.2, label='SDSS-
 c_s = 'seagreen'#'indianred'
 box_region(m, -40., 40., -2, 2, facecolor=c_s, edgecolor=c_s, lw=2, alpha=1, label='Stripe82')
 #plt.fill_between(x_cs82[:-1], y_low_cs82[:-1], y_up_cs82[:-1], color='indianred')
-
+'''
 # KiDS region
 c_k = 'royalblue'#'mediumseagreen'
 box_region(m, 156., 225., -5., 4., facecolor=c_k, edgecolor=c_k, lw=2,alpha=1, label='KiDS')
@@ -114,11 +114,11 @@ box_region(m, 30., 39., -11.5, -3.5, facecolor=c_c, edgecolor=c_c, alpha=0.7, lw
 box_region(m, 131., 137., -7., -1., facecolor=c_c, edgecolor=c_c, alpha=0.7, lw=2)
 box_region(m, 208., 221., 51., 58., facecolor=c_c, edgecolor=c_c, alpha=0.7, lw=2)
 box_region(m, 330., 336., -1., 5., facecolor=c_c, edgecolor=c_c, alpha=0.7, lw=2)
-
+'''
 
 
 
 
 plt.xlabel('Equatorial ($\\alpha$, $\\delta$)', fontsize=12)
 plt.legend(loc=4, fontsize=10,framealpha=1)
-
+plt.tight_layout()

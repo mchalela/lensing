@@ -92,6 +92,42 @@ class ShearMap(object):
     def __getitem__(self, key):
         return getattr(self, key)
 
+    def _mirror(self, data, mirror):
+
+        ra_gal, dec_gal = cat.data['RAJ2000'], cat.data['DECJ2000'] 
+        ra_cen, dec_cen = cat.data['RA'], cat.data['DEC']
+        e1_gal, e2_gal = cat.data['e1'], cat.data['e2']
+
+        angular_vector = gentools.sphere_angular_vector
+        rotate_pos = gentools.equatorial_coordinates_rotation
+        rotate_ellip = gentools.polar_rotation        
+
+        distance, orientation = angular_vector(
+            ra_gal, dec_gal, ra_cen, dec_cen, units='deg')
+        orientation += 90.
+
+        # Third quadrant
+        if miror in ['x', 'xy', 'yx']:
+            mask_3c = (orientation>180.)*(orientation<270)
+            ang = orientation[mask_3c] - 180
+            ra_rot_3c, dec_rot_3c = rotate_pos(
+                ra_gal[mask_3c], dec_gal[mask_3c],
+                ra_cen[mask_3c], dec_cen[mask_3c],
+                -2*ang, units='deg')
+
+        # Fourth quadrant
+        if miror in ['y', 'xy', 'yx']:
+            mask_4c = (orientation>=270.)*(orientation<360)
+            ang = 360 - orientation[mask_4c]
+            ra_rot_4c, dec_rot_4c = rotate_pos(
+                ra_gal[mask_4c], dec_gal[mask_4c],
+                ra_cen[mask_4c], dec_cen[mask_4c],
+                2*ang, units='deg')
+
+
+
+
+
     def set_Mpc_scale(self, dl):
         Mpc_scale = dl*np.deg2rad(1./3600.)
         self.Mpc_scale_mean = Mpc_scale.mean()
@@ -103,6 +139,7 @@ class ShearMap(object):
         self.beta_mean = beta.mean()
         self.sigma_critic = sigma_critic.mean()
         return sigma_critic
+
 
     def QuickPlot(self, normed=True, cmap='gist_heat_r'):
 
