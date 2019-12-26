@@ -186,7 +186,6 @@ class Density:
 		nfw_cen = self.NFW(r_h, logM200_h=logM200_h)
 		nfw_off = self.NFWoff(r_h, logM200_h=logM200_h, disp_offset_h=disp_offset_h)
 		nfw_combined = p_cen * nfw_cen + (1-p_cen) * nfw_off
-		nfw_combined = nfw_off
 		return nfw_combined
 
 	def _set_secondhalo_params(self, r_h):
