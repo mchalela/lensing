@@ -40,7 +40,8 @@ def sphere_angular_separation(lon1, lat1, lon2, lat2):
 
 def sphere_angular_vector(ra, dec, ra_center, dec_center, units='rad'): 
     '''
-    Angular separation and orientation between two points on a sphere
+    Angular separation and orientation between two points on a sphere.
+    Orientation is meassured from declination axis clockwise.
 
     Parameters
     ----------
