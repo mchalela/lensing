@@ -12,7 +12,6 @@ def polar_rotation(e1, e2, theta):
 def equatorial_coordinates_rotation(ra, dec, ra_center, dec_center, angle, units='deg'):
     '''
     Rotation in spherical coordinates using Rodrigues formula.
-    Rotation is clockwise.
 
     Parameters
     ----------
@@ -44,8 +43,6 @@ def equatorial_coordinates_rotation(ra, dec, ra_center, dec_center, angle, units
         ra, dec = np.deg2rad(ra), np.deg2rad(dec)
         ra_center, dec_center = np.deg2rad(ra_center), np.deg2rad(dec_center)
         angle = np.deg2rad(angle)
-
-    angle -= 1.         # to make rotation clockwise
 
     phi = ra
     theta = dec
