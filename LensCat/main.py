@@ -50,7 +50,7 @@ class cat_paths:
 	'''
 	node = platform.node()
 	if node in ['mirta2','mirta3','sersic','clemente']:
-		p = '/home/mchalela/lensing/'
+		p = '/mnt/is0/mchalela/lensing/'
 	elif node in ['univac','multivac']:
 		p = '/home/martin/Documentos/Doctorado/Lentes/lensing/'
 	else:
@@ -68,6 +68,8 @@ class cat_paths:
 			'W2': os.path.join(p,'CFHT','CFHTLens_W2.h5'),
 			'W3': os.path.join(p,'CFHT','CFHTLens_W3.h5'),
 			'W4': os.path.join(p,'CFHT','CFHTLens_W4.h5')}
+
+	rcsl = {'RCSL1': os.path.join(p,'RCSL','RCSLens.h5')}
 
 
 def read_columns(hdf5file, columns):
