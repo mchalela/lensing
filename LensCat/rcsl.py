@@ -31,7 +31,7 @@ class RCSL(Survey):
 						'c1_DP', 'c2_DP', 'c1_NB', 'c2_NB']
 
 		# Somehow we load the data and save it in cls.data
-		field_paths = [cat_paths.cs82[field] for field in fields]
+		field_paths = [cat_paths.rcsl[field] for field in fields]
 		dl = pd.concat( [read_columns(path, columns) for path in field_paths] ).reset_index(drop=True)
 		catid = cls.name+'.'+pd.DataFrame({'CATID': np.arange(dl.shape[0]).astype(str)})
 		cls.data = pd.concat([catid,dl], axis=1)
