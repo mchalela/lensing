@@ -36,9 +36,11 @@ class RCSL(Survey):
 		catid = cls.name+'.'+pd.DataFrame({'CATID': np.arange(dl.shape[0]).astype(str)})
 		cls.data = pd.concat([catid,dl], axis=1)
 
-		# Additive correction, PONER REFERENCIAS DE COMO USAR LOS c1, c2
-		#cls.data['e2'] -= cls.data['c2']
-		#cls.data.drop(columns='c2', inplace=True)
+		# Additive correction, PONER REFERENCIA DE COMO CALIBRAR LOS c1, c2
+		cls.data['e1'] -= (cls.data['c1_DP'] + cls.data['c1_NB'])
+		cls.data['e2'] -= (cls.data['c2_DP'] + cls.data['c2_NB'])
+		
+		cls.data.drop(columns=['c1_DP', 'c2_DP', 'c1_NB', 'c2_NB'], inplace=True)
 
 		# Science cuts...
 		# fitclass=0 for galaxies
