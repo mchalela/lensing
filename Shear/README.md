@@ -36,4 +36,7 @@ This will return a profile object with 30 logarithmic bins (space='lin' for line
  profile = Shear.Profile.read_profile('CFHT.profile')
  ```
 
+ This is an example of the redMaPPer shear profiles for the three lensing catalogs. The clusters are stacked in the redshift range z = (0.1, 0.33).
+ ![Shear profiles](https://github.com/mchalela/lensing/blob/master/Shear/shear_profiles.png)
+
 ## ShearMap
