@@ -36,18 +36,18 @@ class Density:
 
 		self.J2 = None 		# Creates an empty variable for the Bessel function
 
-	def BCG(self, r_h, logMstar_h=13.):
+	def Bar(self, r_h, logMstar_h=13.):
 		'''
-		BCG density contrast profile. r_h and Mstar_h must be in Mpc/h and Msun/h respectively
+		Barionic density contrast profile. r_h and Mstar_h must be in Mpc/h and Msun/h respectively
 		'''
 		Mstar_h = 10**logMstar_h
 		rp=r_h*1.e6
 		bcg_density = Mstar_h/(np.pi*rp**2)			# Density contrast in h*Msun/pc2
 		return bcg_density
 
-	def BCG_with_M200(self, r_h, logM200_h=13.):
+	def Bar_with_M200(self, r_h, logM200_h=13.):
 		'''
-		Wraper to fit the BCG with the M200 of the halo instead of Mstar.
+		Wraper to fit the Barionic with the M200 of the halo instead of Mstar.
 		We use the scaling relation of Johnston et a. 2007. Section 5.4
 		https://arxiv.org/pdf/0709.1159.pdf
 		'''
@@ -57,7 +57,7 @@ class Density:
 		p2 = -1.380
 		Mstar_h = p0 / (1 + (M200_h/p1)**p2)
 		
-		bcg_density = self.BCG(r_h, logMstar_h=np.log10(Mstar_h))
+		bcg_density = self.Bar(r_h, logMstar_h=np.log10(Mstar_h))
 		return bcg_density
 
 	def SIS(self, r_h, disp=300.):
@@ -414,15 +414,15 @@ class DensityModels:
 		self.cosmo = cosmo
 		self.density = Density(z, cosmo)
 
-	def BCG(self, logMstar_0=13.):
-		model = models.custom_model(self.density.BCG)
-		init_mod = model(logMstar_h=logMstar_0, name='BCG')
+	def Bar(self, logMstar_0=13.):
+		model = models.custom_model(self.density.Bar)
+		init_mod = model(logMstar_h=logMstar_0, name='Bar')
 		init_mod.logMstar_h.bounds = (7., 14.)
 		return init_mod
 
-	def BCG_with_M200(self, logM200_0=13.):
-		model = models.custom_model(self.density.BCG_with_M200)
-		init_mod = model(logM200_h=logM200_0, name='BCG_with_M200')
+	def Bar_with_M200(self, logM200_0=13.):
+		model = models.custom_model(self.density.Bar_with_M200)
+		init_mod = model(logM200_h=logM200_0, name='Bar_with_M200')
 		init_mod.logM200_h.bounds = (10., 16.)
 		return init_mod
 
