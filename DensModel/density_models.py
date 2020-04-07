@@ -472,10 +472,13 @@ class DensityModels:
 		num_M200 = sum(striped_param_flags)
 
 		if num_M200 <= 1: return total_model
-		
-		tied_M200 = lambda M: total_model.logM200_h_0
-		for i in range(num_M200-1,0,-1):
-			total_model.__dict__['_constraints']['tied']['logM200_h_'+str(i)] = tied_M200
+
+		first_M200 = np.where(striped_param_flags)[0][0]
+		first_M200pos = int(total_model.param_names[first_M200][-1])
+		tied_M200 = lambda M: getattr(total_model, total_model.param_names[first_M200])
+		for i in range(num_M200):
+			ii = i + first_M200pos + 1
+			total_model.__dict__['_constraints']['tied']['logM200_h_'+str(ii)] = tied_M200
 		return total_model
 
 

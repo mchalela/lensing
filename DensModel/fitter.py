@@ -23,6 +23,35 @@ def Chi2Reduced(model, data, err, df=1):
     chi2 = ((model-data)**2/err**2).sum() / float(nbin-1-df)
     return chi2
 
+def PrepareParameters(model, param):
+    '''Prepare the parameters array to evaluate the model,
+    this is useful when working with fixed parameters.
+    '''
+    try:
+        # Check if the mask exists
+        FixedMask = model.meta['FixedMask']
+    except KeyError as ke:
+        # First time    
+        p_names = model.param_names
+        model.meta['FixedMask'] = np.array([
+            model.__dict__['_constraints']['fixed'][name] for name in p_names],
+            dtype=bool)
+        FixedMask = model.meta['FixedMask']
+        assert (~FixedMask).sum() == len(param), 'Something went wrong with your parameters'
+
+    p_values = model.parameters
+    p_values[~FixedMask] = param
+    return p_values
+
+def Fitter2Model(model, params):
+    '''Maps the parameters to the model so the best fit can be evaluated as model(r)
+    '''
+    assert len(model.parameters) == params, 'Something went wrong with your parameters'
+    model.parameters = params
+    # This is the old way. Not using it because it is deprecated now
+    #_fitter_to_model_params(model, params)
+    return None
+
 def ParamPrior(param, param_name):
     '''
     Choose the prior for a given parameter
@@ -136,6 +165,12 @@ class GaussianLogLikelihood(LogLikelihood, object):
         GlobalModel = model.copy()
         
     def evaluate(self, pars):
+
+        # Fix values of fixed parameters
+        print 'Antes...', pars
+        pars = PrepareParameters(GlobalModel, pars)
+        print 'Despues...', pars
+
         _fitter_to_model_params(GlobalModel, pars)
         mean_model = GlobalModel(self.x)
         loglike = np.sum(-0.5*np.log(2.*np.pi) - np.log(self.yerr) - (self.y-mean_model)**2/(2.*self.yerr**2))
@@ -262,7 +297,8 @@ class Fitter(object):
             #loglike = log_probability
             loglike = GaussianLogPosterior(self.r, self.shear, self.shear_err, GlobalModel)
 
-        #Sample the posterior using emcee
+        # Sample the posterior using emcee
+        # Only fittable parameters!
         ndim = len(GlobalModel.parameters)
         p0 = np.random.normal(self.start, ndim*[0.2], size=(nwalkers, ndim))
 
@@ -316,9 +352,4 @@ class Fitter(object):
         pass
 
 
-def Fitter2Model(model, params):
-    '''
-    Maps the parameters to the model so the best fit can be evaluated as model(r)
-    '''
-    _fitter_to_model_params(model, params)
-    return None
+

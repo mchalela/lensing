@@ -23,7 +23,7 @@ logM200 = np.log10(2.3e14)
 
 r = np.geomspace(0.01, 10., 40)
 t0=time.time()
-bcg = DN.BCG_with_M200(r, logM200)
+bcg = DN.Bar_with_M200(r, logM200)
 nfw = DN.NFW(r, logM200)
 #shalo = DN.SecondHalo(r, logM200)
 shear_model = bcg+nfw
@@ -34,18 +34,25 @@ shear_model *= 1+np.random.normal(0., 0.2, r.shape)
 shear_err = 0.2*shear_model
 
 DNM = DensModel.DensityModels(z=z, cosmo=Planck15)
-#bcg_init = DNM.BCG_with_M200()
-bcg_init = DNM.BCG()
+#bcg_init = DNM.Bar_with_M200()
+bcg_init = DNM.Bar()
 nfw_init = DNM.NFW()
-#shalo_init = DNM.SecondHalo()
-shear_init = DNM.AddModels([bcg_init, nfw_init])#, shalo_init])
+shalo_init = DNM.SecondHalo()
+shear_init = DNM.AddModels([bcg_init, nfw_init, shalo_init])
 #shear_init2 = nfw_init.copy()#, shalo_init])
 #shear_init = DNM.SIS()
 
 start_params = [12., 13.]
 fitter = DensModel.Fitter(r, shear_model, shear_err, shear_init, start_params)
-out_min = fitter.Minimize(method='GLP')
+out_min = fitter.Minimize()
 DensModel.Fitter2Model(shear_init, out_min.param_values)
+
+# a mano
+
+output = scipy.optimize.curve_fit(shear_init.evaluate, 
+            r, shear_model, sigma=shear_err, p0=start_params, absolute_sigma=True)
+
+
 
 '''
 start_params = [11., 14.]
