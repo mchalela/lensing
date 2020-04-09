@@ -167,7 +167,7 @@ class Catalog(object):
 		if format=='FITS':
 			cols = []
 			for name in list(self.data.columns):
-				print str(name), self.data[name].dtype, formats.pd2fits(self.data[name].dtype)
+				#print str(name), self.data[name].dtype, formats.pd2fits(self.data[name].dtype)
 				c = fits.Column(name=str(name), format=formats.pd2fits(self.data[name].dtype), array=self.data[name].to_numpy())
 				cols.append(c)
 			hdul = fits.BinTableHDU.from_columns(cols)
