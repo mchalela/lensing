@@ -175,7 +175,8 @@ def compute_lensing_distances(zl, zs, precomputed=False, dz=0.0005, cosmo=None):
         DLS = cosmo.angular_diameter_distance_z1z2(zl, zs).value
 
     else:
-        H = scipy.sparse.load_npz('PrecomputedDistances_dz_{}.npz'.format(dz)).todense()
+        path = os.path.dirname(os.path.abspath(__file__))+'/'
+        H = scipy.sparse.load_npz(path+'PrecomputedDistances_dz_{}.npz'.format(dz)).todense()
         H = np.asarray(H)
         Delta_z = dz
         zl_big = zl/Delta_z
