@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import scipy.sparse
 from astropy.cosmology import FLRW
@@ -134,10 +135,10 @@ def _precompute_lensing_distances(zl_max, zs_max, dz=0.0005, cosmo=None):
     for i in xrange(len(zl)):
             B[i, i:] = cosmo.angular_diameter_distance_z1z2(zl[i], zs[i:]).value
 
+    path = os.path.dirname(os.path.abspath(__file__))+'/'
     filename = 'PrecomputedDistances_dz_{}.npz'.format(dz)
-    scipy.sparse.save_npz(filename, scipy.sparse.csc_matrix(B))
-    return filename
-  
+    scipy.sparse.save_npz(path+filename, scipy.sparse.csc_matrix(B))
+    return path+filename
 
 
 #-----------------------------------------------------------------------
