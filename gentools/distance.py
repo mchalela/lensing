@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.sparse
+from astropy.cosmology import FLRW
 
 def sphere_angular_separation(lon1, lat1, lon2, lat2):
     '''
