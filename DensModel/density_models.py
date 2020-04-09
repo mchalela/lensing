@@ -414,48 +414,62 @@ class DensityModels:
 		self.cosmo = cosmo
 		self.density = Density(z, cosmo)
 
-	def Bar(self, logMstar_0=13.):
+	def Bar(self, logMstar_0=13.,logMstar_fixed=False):
 		model = models.custom_model(self.density.Bar)
 		init_mod = model(logMstar_h=logMstar_0, name='Bar')
+		# Constraints
+		init_mod.logMstar_h.fixed = logMstar_fixed
 		init_mod.logMstar_h.bounds = (7., 14.)
 		return init_mod
 
-	def Bar_with_M200(self, logM200_0=13.):
+	def Bar_with_M200(self, logM200_0=13., logM200_fixed=False):
 		model = models.custom_model(self.density.Bar_with_M200)
 		init_mod = model(logM200_h=logM200_0, name='Bar_with_M200')
+		# Constraints
+		init_mod.logM200_h.fixed = logM200_fixed
 		init_mod.logM200_h.bounds = (10., 16.)
 		return init_mod
 
-	def SIS(self, disp_0=300.):
+	def SIS(self, disp_0=300., disp_fixed=False):
 		model = models.custom_model(self.density.SIS)
 		init_mod = model(disp=disp_0, name='SIS')
+		# Constraints
+		init_mod.disp.fixed = disp_fixed
 		init_mod.disp.bounds = (0., 2000.)
 		return init_mod
 
-	def NFW(self, logM200_0=13.):
+	def NFW(self, logM200_0=13., logM200_fixed=False):
 		model = models.custom_model(self.density.NFW)
 		init_mod = model(logM200_h=logM200_0, name='NFW')
+		# Constraints
+		init_mod.logM200_h.fixed = logM200_fixed
 		init_mod.logM200_h.bounds = (10., 16.)
 		return init_mod
 
-	def NFWCombined(self, logM200_0=13., disp_offset_0=0.1, p_cen_0=1.):
+	def NFWCombined(self, logM200_0=13., disp_offset_0=0.1, p_cen_0=1.,
+		logM200_fixed=False, disp_offset_fixed=False, p_cen_fixed=False):
 
 		model = models.custom_model(self.density.NFWCombined)
 		init_mod = model(logM200_h=logM200_0, disp_offset_h=disp_offset_0, p_cen=p_cen_0, name='NFWCombined')
-
 		# Constraints
+		init_mod.logM200_h.fixed = logM200_fixed
+		init_mod.disp_offset_h.fixed = disp_offset_fixed
+		init_mod.p_cen.fixed = p_cen_fixed
 		init_mod.logM200_h.bounds = (10., 16.)	
 		init_mod.disp_offset_h.bounds = (0., 1.)
 		init_mod.p_cen.bounds = (0., 1.)
 		return init_mod		
 
-	def SecondHalo(self, logM200_0=13., Delta_fix=200.):
+	def SecondHalo(self, logM200_0=13., Delta=200.,
+		logM200_fixed=False, Delta_fixed=True):
+		if not Delta_fixed: print 'WARNING: You should fix Delta.'
 		
 		model = models.custom_model(self.density.SecondHalo)
-		init_mod = model(logM200_h=logM200_0, Delta=Delta_fix, name='SecondHalo')
+		init_mod = model(logM200_h=logM200_0, Delta=Delta, name='SecondHalo')
 
 		# Constraints
-		init_mod.Delta.fixed = True		# Fix Delta
+		init_mod.logM200_h.fixed = logM200_fixed
+		init_mod.Delta.fixed = Delta_fixed		# Always fix Delta
 		init_mod.logM200_h.bounds = (10., 16.)
 		return init_mod	
 

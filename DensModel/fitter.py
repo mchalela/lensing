@@ -43,13 +43,13 @@ def PrepareParameters(model, param):
     p_values[~FixedMask] = param
     return p_values
 
-def Fitter2Model(model, params):
+def Fitter2Model(model, param):
     '''Maps the parameters to the model so the best fit can be evaluated as model(r)
     '''
-    assert len(model.parameters) == params, 'Something went wrong with your parameters'
-    model.parameters = params
+    assert len(model.parameters) == len(param), 'Something went wrong with your parameters'
+    model.parameters = param
     # This is the old way. Not using it because it is deprecated now
-    #_fitter_to_model_params(model, params)
+    #_fitter_to_model_params(model, param)
     return None
 
 def ParamPrior(param, param_name):

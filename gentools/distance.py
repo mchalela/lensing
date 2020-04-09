@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.sparse
 
 def sphere_angular_separation(lon1, lat1, lon2, lat2):
     '''
@@ -102,3 +103,96 @@ def sphere_angular_vector(ra, dec, ra_center, dec_center, units='rad'):
        dist, theta = np.rad2deg(dist), np.rad2deg(theta)
 
     return dist, theta
+
+
+def _precompute_lensing_distances(zl_max, zs_max, dz=0.0005, cosmo=None):
+    '''Precompute lensing distances DL, DS, DLS and save to a file
+
+    Parameters
+    ----------
+    zl_max, zs_max : float
+        Maximum redshift to wich the distances will be computed
+    dz : float
+        Redshift step
+    cosmo: cosmology
+        instance of astropy.cosmology.FLRW, like Planck15 or LambdaCDM. 
+
+    Returns
+    -------
+    file : string
+        Filename where the sparse matrix was saved. The format is
+        'PrecomputedDistances_dz_{}.npz'.format(dz)
+
+    '''
+    if not isinstance(cosmo, FLRW):
+        raise TypeError, 'cosmo is not an instance of astropy.cosmology.FLRW' 
+    zl = np.arange(0., zl_max+dz, dz)
+    zs = np.arange(0., zs_max+dz, dz)
+
+    B = scipy.sparse.lil_matrix((len(zl), len(zs)), dtype=np.float64)
+    for i in xrange(len(zl)):
+            B[i, i:] = cosmo.angular_diameter_distance_z1z2(zl[i], zs[i:]).value
+
+    filename = 'PrecomputedDistances_dz_{}.npz'.format(dz)
+    scipy.sparse.save_npz(filename, scipy.sparse.csc_matrix(B))
+    return filename
+  
+
+
+#-----------------------------------------------------------------------
+# Recuperamos los datos
+def compute_lensing_distances(zl, zs, precomputed=False, dz=0.0005, cosmo=None):
+    '''
+    Compute lensing Angular diameter distances.
+
+    Parameters
+    ----------
+    zl, zs : array, float
+        Redshift of the lens and the source.
+    precomputed : bool
+        If False the true distances are computed. If False the distances
+        will be interpolated from a precomputed file.
+    dz : float
+        step of the precomputed distances file. If precomputed is True,
+        this value will be used to open the file:
+            'PrecomputedDistances_dz_{}.npz'
+    cosmo: cosmology
+        instance of astropy.cosmology.FLRW, like Planck15 or LambdaCDM.
+
+    Returns
+    -------
+    DL, DS, DLS : array, float
+        Angular diameter distances. DL: dist. to the lens, DS: dist. to
+        the source, DLS: dist. from lens to source. 
+    '''
+    if not precomputed:
+        if not isinstance(cosmo, FLRW):
+            raise TypeError, 'cosmo is not an instance of astropy.cosmology.FLRW'           
+        DL  = cosmo.angular_diameter_distance(zl).value
+        DS  = cosmo.angular_diameter_distance(zs).value
+        DLS = cosmo.angular_diameter_distance_z1z2(zl, zs).value
+
+    else:
+        H = scipy.sparse.load_npz('PrecomputedDistances_dz_{}.npz'.format(dz)).todense()
+        H = np.asarray(H)
+        Delta_z = dz
+        zl_big = zl/Delta_z
+        zs_big = zs/Delta_z
+        zl_idx = zl_big.astype(np.int32)
+        zs_idx = zs_big.astype(np.int32)
+
+        zl1_frac = (zl_big - zl_idx)*Delta_z
+        zs1_frac = (zs_big - zs_idx)*Delta_z
+        zl2_frac = (zl_idx+1 - zl_big)*Delta_z
+        zs2_frac = (zs_idx+1 - zs_big)*Delta_z
+        # Lineal interpolation for DL and DS
+        DL  = (H[0, zl_idx]*zl2_frac + H[0, zl_idx+1]*zl1_frac) / Delta_z
+        DS  = (H[0, zs_idx]*zs2_frac + H[0, zs_idx+1]*zs1_frac) / Delta_z
+        # Bilineal interpolation for DLS
+        A = H[zl_idx, zs_idx]*zl2_frac*zs2_frac
+        B = H[zl_idx+1, zs_idx]*zl1_frac*zs2_frac
+        C = H[zl_idx, zs_idx+1]*zl2_frac*zs1_frac
+        D = H[zl_idx+1, zs_idx+1]*zl1_frac*zs1_frac
+        DLS = (A + B + C + D) / Delta_z**2
+
+    return [DL, DS, DLS]
