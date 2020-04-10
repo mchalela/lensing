@@ -39,7 +39,6 @@ class RCSL(Survey):
 		# Additive correction, PONER REFERENCIA DE COMO CALIBRAR LOS c1, c2
 		cls.data['e1'] -= (cls.data['c1_DP'] + cls.data['c1_NB'])
 		cls.data['e2'] -= (cls.data['c2_DP'] + cls.data['c2_NB'])
-		
 		cls.data.drop(columns=['c1_DP', 'c2_DP', 'c1_NB', 'c2_NB'], inplace=True)
 
 		# Science cuts...
@@ -48,7 +47,9 @@ class RCSL(Survey):
 		# weight>0 to have non-negative weights
 		if science_cut:
 			mask = (cls.data['fitclass']==0) & (cls.data['MASK']<=1) & (cls.data['weight']>0)
+			mask &= cls.data['ODDS']>=0.4
 			cls.data = cls.data[mask]
+			cls.data.drop(columns=['fitclass', 'MASK'], inplace=True)
 
 	@classonly
 	def drop(cls):

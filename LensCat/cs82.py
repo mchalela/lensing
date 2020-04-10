@@ -41,7 +41,9 @@ class CS82(Survey):
 		# weight>0 to have non-negative weights
 		if science_cut:
 			mask = (cls.data['fitclass']==0) & (cls.data['MASK']<=1) & (cls.data['weight']>0)
+			mask &= cls.data['ODDS']>=0.4
 			cls.data = cls.data[mask]
+			cls.data.drop(columns=['fitclass', 'MASK'], inplace=True)
 
 	@classonly
 	def drop(cls):
