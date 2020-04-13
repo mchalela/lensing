@@ -201,7 +201,7 @@ class Survey(object):
 		self.data = None
 
 	@classonly
-	def bubble_neighbors(cls, centre, radii, append_data=None, njobs=4):
+	def find_neighbors(cls, centre, upper_radii, lower_radii=0, append_data=None, njobs=4):
 
 		# Check if catalogue is loaded
 		try:
@@ -218,7 +218,11 @@ class Survey(object):
 		if isinstance(centre, pd.DataFrame): centre = centre.to_numpy()
 
 		# Search for sources
-		dd, ii = cls.gsp.bubble_neighbors(centre, distance_upper_bound=radii, njobs=njobs)
+		if lower_radii==0:
+			dd, ii = cls.gsp.bubble_neighbors(centre, distance_upper_bound=upper_radii, njobs=njobs)
+		else: 
+			dd, ii = cls.gsp.shell_neighbors(centre, distance_upper_bound=upper_radii, 
+						distance_lower_bound=lower_radii, njobs=njobs)
 		ii = list(itertools.chain.from_iterable(ii))
 		cat = Catalog()
 		cat.data = cls.data.iloc[ii].reset_index(drop=True)
@@ -232,9 +236,6 @@ class Survey(object):
 			cat.data = pd.concat([cat.data, append_data], axis=1)
 		return cat
 
-	@classonly
-	def shell_neighbors(self, centre, radii_low, radii_up):
-		pass
 
 	@classonly
 	def in_field(cls, alpha, delta):
