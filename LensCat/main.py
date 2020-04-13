@@ -201,7 +201,7 @@ class Survey(object):
 		self.data = None
 
 	@classonly
-	def find_neighbors(cls, centre, upper_radii, lower_radii=0, append_data=None, njobs=4):
+	def find_neighbors(cls, centre, upper_radii, lower_radii=0, append_data=None, njobs=4, compressed=False):
 
 		# Check if catalogue is loaded
 		try:
