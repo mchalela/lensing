@@ -233,8 +233,8 @@ class Survey(object):
 			# Two catalogs, one for galaxies and one for groups
 			lens_cat = Catalog()
 			cat_ids = [list(cls.data['CATID'].iloc[_]) for _ in ii]
-			ii_data = pd.DataFrame(name='CATID', 
-									array=np.array(cat_ids, dtype=np.object))
+			dic ={'CATID': np.array(cat_ids, dtype=np.object)}
+			ii_data = pd.DataFrame(dic)
 			if append_data is not None:
 				lens_cat.data = pd.concat([append_data, ii_data], axis=1)
 			else:
