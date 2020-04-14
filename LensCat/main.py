@@ -6,7 +6,7 @@ import itertools
 from astropy.io import fits
 from astropy.table import Table
 
-from .grispy import GriSPy
+from grispy import GriSPy
 from ..gentools import classonly
 '''
 Que tipo de comportamiento espero?
