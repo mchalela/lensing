@@ -218,7 +218,7 @@ class Survey(object):
 		except AttributeError:
 			cls.gsp = call_gripsy(cls.data)
 
-			self.compressed = compressed
+		cls.compressed = compressed
 		# TODO: Check data types!! Create a class..
 		if isinstance(centre, pd.DataFrame): centre = centre.to_numpy()
 
@@ -229,7 +229,7 @@ class Survey(object):
 			dd, ii = cls.gsp.shell_neighbors(centre, distance_upper_bound=upper_radii, 
 						distance_lower_bound=lower_radii, njobs=njobs)
 
-		if self.compressed:
+		if cls.compressed:
 			# Two catalogs, one for galaxies and one for groups
 			lens_cat = Catalog()
 			cat_ids = [list(cls.data['CATID'].iloc[_]) for _ in ii]
