@@ -2,11 +2,11 @@ import os, platform
 import numpy as np
 import pandas as pd
 import h5py
-from grispy import GriSPy
 import itertools
 from astropy.io import fits
 from astropy.table import Table
 
+from .grispy import GriSPy
 from ..gentools import classonly
 '''
 Que tipo de comportamiento espero?
@@ -100,17 +100,21 @@ def call_gripsy(data):
 class formats:
 	'''Convert dtypes between diferent formats
 	'''
-	np2fits = {np.object:'20A', np.int64:'1K', np.int32:'1J', np.int16:'1I',
+	np2fits = {np.int64:'1K', np.int32:'1J', np.int16:'1I',
 			   np.float64:'1D', np.float32:'1E', np.bool:'L'}
+	np2fits_obj = {str:'20A', np.ndarray:'PJ()'}
 
 	@classonly
-	def pd2fits(cls, dtype):
+	def pd2fits(cls, column):
 		'''Pandas uses numpy as base data type
 		'''
 		is_dtype_equal = pd.core.dtypes.common.is_dtype_equal
-		for npfmt in cls.np2fits.keys():
-			if is_dtype_equal(dtype, npfmt):
-				return cls.np2fits[npfmt]
+		dtype = column.dtype
+		inner_dtype = type(column[0])
+		if dtype in list(cls.np2fits.keys()):
+			return cls.np2fits[dtype]
+		elif inner_dtype in list(cls.np2fits_obj.keys()):
+			return cls.np2fits_obj[inner_dtype]
 	
 	@classonly
 	def pd2hdf5(cls, dtype):
@@ -122,9 +126,9 @@ class Catalog(object):
 	'''Class for catalog of source galaxies
 	'''
 
-	def __init__(self, data=None):
+	def __init__(self, data=None, name='Catalog'):
 		self.data = data
-		self.name = 'Catalog'
+		self.name = name
 		self.sources = 0
 
 	def __add__(self, catalog2):
@@ -168,7 +172,7 @@ class Catalog(object):
 			cols = []
 			for name in list(self.data.columns):
 				#print str(name), self.data[name].dtype, formats.pd2fits(self.data[name].dtype)
-				c = fits.Column(name=str(name), format=formats.pd2fits(self.data[name].dtype), array=self.data[name].to_numpy())
+				c = fits.Column(name=str(name), format=formats.pd2fits(self.data[name]), array=self.data[name].to_numpy())
 				cols.append(c)
 			hdul = fits.BinTableHDU.from_columns(cols)
 			hdul.header.append(('CATNAME', self.name), end=True)
@@ -201,7 +205,7 @@ class Survey(object):
 		self.data = None
 
 	@classonly
-	def find_neighbors(cls, centre, upper_radii, lower_radii=0, append_data=None, njobs=4, compressed=False):
+	def find_neighbors(cls, centre, upper_radii, lower_radii=None, append_data=None, compressed=False, njobs=4):
 
 		# Check if catalogue is loaded
 		try:
@@ -214,27 +218,48 @@ class Survey(object):
 		except AttributeError:
 			cls.gsp = call_gripsy(cls.data)
 
+			self.compressed = compressed
 		# TODO: Check data types!! Create a class..
 		if isinstance(centre, pd.DataFrame): centre = centre.to_numpy()
 
 		# Search for sources
-		if lower_radii==0:
+		if lower_radii is None:
 			dd, ii = cls.gsp.bubble_neighbors(centre, distance_upper_bound=upper_radii, njobs=njobs)
 		else: 
 			dd, ii = cls.gsp.shell_neighbors(centre, distance_upper_bound=upper_radii, 
 						distance_lower_bound=lower_radii, njobs=njobs)
-		ii = list(itertools.chain.from_iterable(ii))
-		cat = Catalog()
-		cat.data = cls.data.iloc[ii].reset_index(drop=True)
-		cat.name = cls.name
 
-		# Append lens data to sources catalog
-		if append_data is not None:
-			sources_per_lens = np.array( map(len,dd) )
-			append_data = append_data.loc[append_data.index.repeat(sources_per_lens)]
-			append_data.reset_index(drop=True, inplace=True)
-			cat.data = pd.concat([cat.data, append_data], axis=1)
-		return cat
+		if self.compressed:
+			# Two catalogs, one for galaxies and one for groups
+			lens_cat = Catalog()
+			cat_ids = [list(cls.data['CATID'].iloc[_]) for _ in ii]
+			ii_data = pd.DataFrame(name='CATID', 
+									array=np.array(cat_ids, dtype=np.object))
+			if append_data is not None:
+				lens_cat.data = pd.concat([append_data, ii_data], axis=1)
+			else:
+				lens_cat.data = ii_data
+
+			src_cat = Catalog()
+			sources_per_lens = np.array( map(len, dd) )
+			ii = list(itertools.chain.from_iterable(ii))
+			iu = np.unique(ii)
+			src_cat.data = cls.data.iloc[iu].reset_index(drop=True)
+
+		else:
+			# One catalog with repeated galaxies	
+			cat = Catalog()
+			ii = list(itertools.chain.from_iterable(ii))
+			cat.data = cls.data.iloc[ii].reset_index(drop=True)
+			cat.name = cls.name
+
+			# Append lens data to sources catalog
+			if append_data is not None:
+				sources_per_lens = np.array( map(len,dd) )
+				append_data = append_data.loc[append_data.index.repeat(sources_per_lens)]
+				append_data.reset_index(drop=True, inplace=True)
+				cat.data = pd.concat([cat.data, append_data], axis=1)
+			return cat
 
 
 	@classonly
