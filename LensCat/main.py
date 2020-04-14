@@ -245,6 +245,7 @@ class Survey(object):
 			ii = list(itertools.chain.from_iterable(ii))
 			iu = np.unique(ii)
 			src_cat.data = cls.data.iloc[iu].reset_index(drop=True)
+			return lens_cat, src_cat
 
 		else:
 			# One catalog with repeated galaxies	
