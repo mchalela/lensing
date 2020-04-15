@@ -32,7 +32,7 @@ class CS82(Survey):
 		# Somehow we load the data and save it in cls.data
 		field_paths = [cat_paths.cs82[field] for field in fields]
 		dl = pd.concat( [read_columns(path, columns) for path in field_paths] ).reset_index(drop=True)
-		catid = cls.name+'.'+pd.DataFrame({'CATID': np.arange(dl.shape[0]).astype(str)})
+		catid = pd.DataFrame({'CATID': np.arange(dl.shape[0]).astype(np.int32)})
 		cls.data = pd.concat([catid,dl], axis=1)
 
 		# Science cuts...

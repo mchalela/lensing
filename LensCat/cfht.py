@@ -31,8 +31,8 @@ class CFHT(Survey):
 		# Somehow we load the data and save it in cls.data
 		field_paths = [cat_paths.cfht[field] for field in fields]
 		dl = pd.concat( [read_columns(path, columns) for path in field_paths] ).reset_index(drop=True)
-		catid = cls.name+'.'+pd.DataFrame({'CATID': np.arange(dl.shape[0]).astype(str)})
-		cls.data = pd.concat([catid,dl], axis=1)
+		catid = pd.DataFrame({'CATID': np.arange(dl.shape[0]).astype(np.int32)})
+		cls.data = pd.concat([catid, dl], axis=1)
 		
 		# Additive correction, see Heymans et al (2012) section 4.1
 		cls.data['e2'] -= cls.data['c2']

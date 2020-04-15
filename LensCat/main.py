@@ -102,7 +102,7 @@ class formats:
 	'''
 	np2fits = {np.int64:'1K', np.int32:'1J', np.int16:'1I',
 			   np.float64:'1D', np.float32:'1E', np.bool:'L'}
-	np2fits_obj = {str:'20A', np.ndarray:'PJ()'}
+	np2fits_obj = {str:'20A', list:'PI()'}
 
 	@classonly
 	def pd2fits(cls, column):
@@ -111,10 +111,15 @@ class formats:
 		is_dtype_equal = pd.core.dtypes.common.is_dtype_equal
 		dtype = column.dtype
 		inner_dtype = type(column[0])
+		# este if es muy pero muy horrible...
 		if dtype in list(cls.np2fits.keys()):
-			return cls.np2fits[dtype]
+			for npfmt in cls.np2fits.keys():
+				if is_dtype_equal(dtype, npfmt):
+					return cls.np2fits[npfmt]
 		elif inner_dtype in list(cls.np2fits_obj.keys()):
-			return cls.np2fits_obj[inner_dtype]
+			for npfmt in cls.np2fits_obj.keys():
+				if is_dtype_equal(inner_dtype, npfmt):
+					return cls.np2fits_obj[npfmt]
 	
 	@classonly
 	def pd2hdf5(cls, dtype):
@@ -171,7 +176,6 @@ class Catalog(object):
 		if format=='FITS':
 			cols = []
 			for name in list(self.data.columns):
-				#print str(name), self.data[name].dtype, formats.pd2fits(self.data[name].dtype)
 				c = fits.Column(name=str(name), format=formats.pd2fits(self.data[name]), array=self.data[name].to_numpy())
 				cols.append(c)
 			hdul = fits.BinTableHDU.from_columns(cols)
@@ -231,33 +235,37 @@ class Survey(object):
 
 		if cls.compressed:
 			# Two catalogs, one for galaxies and one for groups
-			lens_cat = Catalog()
+			lens_cat = Catalog(name=cls.name)
+			src_per_lens = np.array( map(len, dd) )
+			mask_nsrc = src_per_lens>0
 			cat_ids = [list(cls.data['CATID'].iloc[_]) for _ in ii]
-			dic ={'CATID': np.array(cat_ids, dtype=np.object)}
+			dic ={'CATNAME': np.tile([cls.name], len(ii)),
+				'N_SOURCES': src_per_lens, 
+				'CATID': np.array(cat_ids, dtype=np.object) }
 			ii_data = pd.DataFrame(dic)
 			if append_data is not None:
-				lens_cat.data = pd.concat([append_data, ii_data], axis=1)
+				lens_cat.data = pd.concat([append_data, ii_data], axis=1)[mask_nsrc].reset_index(drop=True)
 			else:
-				lens_cat.data = ii_data
+				lens_cat.data = ii_data[mask_nsrc].reset_index(drop=True)
 
-			src_cat = Catalog()
-			sources_per_lens = np.array( map(len, dd) )
+			src_cat = Catalog(name=cls.name)
 			ii = list(itertools.chain.from_iterable(ii))
 			iu = np.unique(ii)
-			src_cat.data = cls.data.iloc[iu].reset_index(drop=True)
+			extra_data = pd.DataFrame({'CATNAME': np.tile([cls.name], len(iu))})
+			iu_data = cls.data.iloc[iu].reset_index(drop=True)
+			src_cat.data = pd.concat([extra_data, iu_data], axis=1).reset_index(drop=True)
 			return lens_cat, src_cat
 
 		else:
 			# One catalog with repeated galaxies	
-			cat = Catalog()
+			cat = Catalog(name=cls.name)
 			ii = list(itertools.chain.from_iterable(ii))
 			cat.data = cls.data.iloc[ii].reset_index(drop=True)
-			cat.name = cls.name
 
 			# Append lens data to sources catalog
 			if append_data is not None:
-				sources_per_lens = np.array( map(len,dd) )
-				append_data = append_data.loc[append_data.index.repeat(sources_per_lens)]
+				src_per_lens = np.array( map(len,dd) )
+				append_data = append_data.loc[append_data.index.repeat(src_per_lens)]
 				append_data.reset_index(drop=True, inplace=True)
 				cat.data = pd.concat([cat.data, append_data], axis=1)
 			return cat
