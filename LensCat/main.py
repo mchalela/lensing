@@ -102,7 +102,7 @@ class formats:
 	'''
 	np2fits = {np.int64:'1K', np.int32:'1J', np.int16:'1I',
 			   np.float64:'1D', np.float32:'1E', np.bool:'L'}
-	np2fits_obj = {str:'20A', list:'PI()'}
+	np2fits_obj = {str:'20A', list:'PJ()'}
 
 	@classonly
 	def pd2fits(cls, column):
@@ -110,7 +110,7 @@ class formats:
 		'''
 		is_dtype_equal = pd.core.dtypes.common.is_dtype_equal
 		dtype = column.dtype
-		inner_dtype = type(column[0])
+		inner_dtype = type(column.iloc[0])
 		# este if es muy pero muy horrible...
 		if dtype in list(cls.np2fits.keys()):
 			for npfmt in cls.np2fits.keys():
@@ -244,7 +244,8 @@ class Survey(object):
 				'CATID': np.array(cat_ids, dtype=np.object) }
 			ii_data = pd.DataFrame(dic)
 			if append_data is not None:
-				lens_cat.data = pd.concat([append_data, ii_data], axis=1)[mask_nsrc].reset_index(drop=True)
+				append_data.reset_index(drop=True, inplace=True)
+				lens_cat.data = pd.concat([append_data, ii_data], axis=1)[mask_nsrc]
 			else:
 				lens_cat.data = ii_data[mask_nsrc].reset_index(drop=True)
 
@@ -254,6 +255,8 @@ class Survey(object):
 			extra_data = pd.DataFrame({'CATNAME': np.tile([cls.name], len(iu))})
 			iu_data = cls.data.iloc[iu].reset_index(drop=True)
 			src_cat.data = pd.concat([extra_data, iu_data], axis=1).reset_index(drop=True)
+			#src_cat.data = cls.data.iloc[iu].reset_index(drop=True)
+			#src_cat.data['CATID'] = cls.name+'.'+src_cat.data['CATID'].astype(str)
 			return lens_cat, src_cat
 
 		else:
