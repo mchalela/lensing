@@ -137,9 +137,8 @@ class Catalog(object):
 		self.sources = 0
 
 	def __add__(self, catalog2):
-		catalog3 = Catalog()
+		catalog3 = Catalog(name=self.name+'+'+catalog2.name)
 		catalog3.data = pd.concat([self.data, catalog2.data]).reset_index(drop=True)
-		catalog3.name = self.name+'+'+catalog2.name
 		return catalog3
 
 	def __str__(self):
