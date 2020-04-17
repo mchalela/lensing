@@ -141,6 +141,11 @@ class Catalog(object):
 		catalog3.data = pd.concat([self.data, catalog2.data]).reset_index(drop=True)
 		return catalog3
 
+	def __and__(self, catalog2):
+		catalog3 = Catalog(name=self.name+'&'+catalog2.name)
+		catalog3.data = pd.concat([self.data, catalog2.data]).reset_index(drop=True)
+		return catalog3
+
 	def __str__(self):
 		output = 'Catalog: {0}\n'.format(self.name)+ \
 				'Sources: {0}\n'.format(self.sources)+ \
@@ -179,6 +184,11 @@ class Catalog(object):
 				cols.append(c)
 			hdul = fits.BinTableHDU.from_columns(cols)
 			hdul.header.append(('CATNAME', self.name), end=True)
+			for line in hdul.header.items():
+				print line
+				if 'TFORM' in line[0]:
+					del hdul.header[line[0]]
+					hdul.header.append(line, end=True)
 			hdul.writeto(file, overwrite=overwrite)
 		else:
 			print 'Format '+format+' is not implemented yet. Use "FITS"'
@@ -250,10 +260,11 @@ class Survey(object):
 
 			src_cat = Catalog(name=cls.name)
 			ii = list(itertools.chain.from_iterable(ii))
-			iu = np.unique(ii)
-			extra_data = pd.DataFrame({'CATNAME': np.tile([cls.name], len(iu))})
+			iu, im = np.unique(ii, return_counts=True)
+			extra_data = pd.DataFrame({'CATNAME': np.tile([cls.name], len(iu)),
+				'MULTIPLICITY': im})
 			iu_data = cls.data.iloc[iu].reset_index(drop=True)
-			src_cat.data = pd.concat([extra_data, iu_data], axis=1).reset_index(drop=True)
+			src_cat.data = pd.concat([iu_data, extra_data], axis=1).reset_index(drop=True)
 			#src_cat.data = cls.data.iloc[iu].reset_index(drop=True)
 			#src_cat.data['CATID'] = cls.name+'.'+src_cat.data['CATID'].astype(str)
 			return lens_cat, src_cat
