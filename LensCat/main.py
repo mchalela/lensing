@@ -185,7 +185,6 @@ class Catalog(object):
 			hdul = fits.BinTableHDU.from_columns(cols)
 			hdul.header.append(('CATNAME', self.name), end=True)
 			for line in hdul.header.items():
-				print line
 				if 'TFORM' in line[0]:
 					del hdul.header[line[0]]
 					hdul.header.append(line, end=True)
