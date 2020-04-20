@@ -103,7 +103,7 @@ class formats:
 	'''
 	np2fits = {np.int64:'1K', np.int32:'1J', np.int16:'1I',
 			   np.float64:'1D', np.float32:'1E', np.bool:'L'}
-	np2fits_obj = {str:'20A', list:'PJ()'}
+	np2fits_obj = {str:'20A', list:'PJ()', np.ndarray:'PJ()'}
 
 	@classonly
 	def pd2fits(cls, column):
