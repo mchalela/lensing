@@ -148,7 +148,7 @@ class Catalog(object):
 		assert self.cat_type == 'lenses', \
 			'Operator + is only defined for lenses catalog. You sended: {}'.format(self.cat_type)
 
-		keepID=True if self.index.name == self.LensID else False
+		keepID=True if self.data.index.name == self.LensID else False
 
 		catalog3 = Catalog(name=self.name+'+'+catalog2.name)
 		catalog3.data = pd.concat([self.data, catalog2.data]).reset_index()
