@@ -140,12 +140,12 @@ class Catalog(object):
 		else:
 			self.sources = data.shape[0]
 		
-		assert cat_type.lower() in ['expanded', 'lenses', 'sources'], 
+		assert cat_type.lower() in ['expanded', 'lenses', 'sources'], \
 			'cat_type not recognized. Use: Expanded, Lenses or Sources.'
 		self.cat_type = cat_type.lower()
 
 	def __add__(self, catalog2):
-		assert self.cat_type == 'lenses',
+		assert self.cat_type == 'lenses', \
 			'Operator + is only defined for lenses catalog. You sended: {}'.format(self.cat_type)
 
 		keepID=True if self.index.name == self.LensID else False
