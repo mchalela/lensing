@@ -49,12 +49,13 @@ class cat_paths:
 	'''Define your local paths
 	'''
 	node = platform.node()
-	if node in ['mirta2','mirta3','sersic','clemente']:
+	if node in ['mirta2','mirta3','sersic','clemente', \
+				'clemente01','clemente02','clemente03','clemente04']:
 		p = '/mnt/is0/mchalela/lensing/'
 	elif node in ['univac','multivac']:
 		p = '/home/martin/Documentos/Doctorado/Lentes/lensing/'
 	else:
-		print 'There is no catalog path for the node: '+node
+		raise ValueError, 'There is no catalog path for the node: '+node
 
 	cs82 = {'CS1': os.path.join(p,'CS82','cs82_combined_lensfit_sources_nozcuts_aug_2015.h5')}
 
