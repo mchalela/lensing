@@ -150,7 +150,7 @@ class Catalog(object):
 
 		keepID=True if self.data.index.name == self.LensID else False
 
-		catalog3 = Catalog(name=self.name+'+'+catalog2.name)
+		catalog3 = Catalog(name=self.name+'+'+catalog2.name, cat_type='lenses')
 		catalog3.data = pd.concat([self.data, catalog2.data]).reset_index()
 		catalog3.data = catalog3.data.drop_duplicates(subset=self.LensID, keep='first')
 		if keepID: catalog3.data.set_index(self.LensID, inplace=True)
@@ -219,6 +219,7 @@ class Catalog(object):
 					del hdul.header[line[0]]
 					hdul.header.append(line, end=True)
 			hdul.header.insert(9, ('CATNAME', self.name))
+			hdul.header.insert(10, ('CATTYPE', self.cat_type))
 			hdul.writeto(file, overwrite=overwrite)
 		else:
 			print 'Format '+format+' is not implemented yet. Use "FITS"'
@@ -232,6 +233,7 @@ class Catalog(object):
 		with fits.open(file) as f:
 			cat.data = Table(f[1].data).to_pandas()
 			cat.name = f[1].header['CATNAME']
+			#cat.cat_type = f[1].header['CATTYPE']
 			cat.sources = f[1].header['NAXIS2']		
 		return cat
 
