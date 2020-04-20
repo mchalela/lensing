@@ -131,14 +131,29 @@ class Catalog(object):
 	'''Class for catalog of source galaxies
 	'''
 
-	def __init__(self, data=None, name='Catalog'):
-		self.data = data
+	def __init__(self, data=None, name='Catalog', cat_type='expanded'):
+		self._data = data
+		self._LensID = 'ID'
 		self.name = name
-		self.sources = 0
+		if data is None:
+			self.sources = 0
+		else:
+			self.sources = data.shape[0]
+		
+		assert cat_type.lower() in ['expanded', 'lenses', 'sources'], 
+			'cat_type not recognized. Use: Expanded, Lenses or Sources.'
+		self.cat_type = cat_type.lower()
 
 	def __add__(self, catalog2):
+		assert self.cat_type == 'lenses',
+			'Operator + is only defined for lenses catalog. You sended: {}'.format(self.cat_type)
+
+		keepID=True if self.index.name == self.LensID else False
+
 		catalog3 = Catalog(name=self.name+'+'+catalog2.name)
-		catalog3.data = pd.concat([self.data, catalog2.data]).reset_index(drop=True)
+		catalog3.data = pd.concat([self.data, catalog2.data]).reset_index()
+		catalog3.data = catalog3.data.drop_duplicates(subset=self.LensID, keep='first')
+		if keepID: catalog3.data.set_index(self.LensID, inplace=True)
 		return catalog3
 
 	def __and__(self, catalog2):
@@ -147,13 +162,29 @@ class Catalog(object):
 		return catalog3
 
 	def __str__(self):
-		output = 'Catalog: {0}\n'.format(self.name)+ \
-				'Sources: {0}\n'.format(self.sources)+ \
-				'Columns: {0}'.format(list(self.data.columns.values))
+		output = '{0} Catalog\n'.format(self.cat_type.capitalize())+ \
+				'Name: {0}\n'.format(self.name)
+		if self.cat_type in	['expanded', 'sources']:
+			output += 'Sources: {0}\n'.format(self.sources)
+		else:
+			output += 'Lenses: {0}\n'.format(self.sources)
+		if self.cat_type != 'sources':
+			output += 'LensID: {0}\n'.format(self.LensID)
+		output += 'Columns: {0}'.format(list(self.data.columns.values))
 		return output
 
 	def __repr__(self):
 		return self.__str__()
+
+	@property
+	def LensID(self):
+		return self._LensID
+	@LensID.setter
+	def LensID(self, LensID):
+		if LensID in list(self.data.columns.values):
+			self._LensID = LensID
+		else:
+			raise KeyError, '{} is not a valid column name.'.format(LensID)
 
 	@property
 	def data(self):
@@ -243,7 +274,7 @@ class Survey(object):
 
 		if cls.compressed:
 			# Two catalogs, one for galaxies and one for groups
-			lens_cat = Catalog(name=cls.name)
+			lens_cat = Catalog(name=cls.name, cat_type='lenses')
 			src_per_lens = np.array( map(len, dd) )
 			mask_nsrc = src_per_lens>0
 			cat_ids = [list(cls.data['CATID'].iloc[_]) for _ in ii]
@@ -257,7 +288,7 @@ class Survey(object):
 			else:
 				lens_cat.data = ii_data[mask_nsrc].reset_index(drop=True)
 
-			src_cat = Catalog(name=cls.name)
+			src_cat = Catalog(name=cls.name, cat_type='sources')
 			ii = list(itertools.chain.from_iterable(ii))
 			iu, im = np.unique(ii, return_counts=True)
 			extra_data = pd.DataFrame({'CATNAME': np.tile([cls.name], len(iu)),
@@ -270,7 +301,7 @@ class Survey(object):
 
 		else:
 			# One catalog with repeated galaxies	
-			cat = Catalog(name=cls.name)
+			cat = Catalog(name=cls.name, cat_type='expanded')
 			ii = list(itertools.chain.from_iterable(ii))
 			cat.data = cls.data.iloc[ii].reset_index(drop=True)
 
