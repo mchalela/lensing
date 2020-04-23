@@ -99,7 +99,7 @@ def call_gripsy(data):
 	return gsp
 
 class formats:
-	'''Convert dtypes between diferent formats
+	'''Convert dtypes between diferent formats.
 	'''
 	np2fits = {np.int64:'1K', np.int32:'1J', np.int16:'1I',
 			   np.float64:'1D', np.float32:'1E', np.bool:'L'}
