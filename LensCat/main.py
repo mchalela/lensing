@@ -275,7 +275,7 @@ class CompressedCatalog(object):
 			self.data_S.reset_index(drop=False, inplace=True)
 
 		# Add lenses data
-		catalog3 = CompressedCatalog(name=self.name+'+'+catalog2.name)
+		catalog3 = CompressedCatalog(name=self.name+'+'+catalog2.name, LensID=self.LensID)
 		catalog3.data_L = pd.concat([self.data_L, catalog2.data_L])
 		catalog3.data_L = catalog3.data_L.drop_duplicates(subset=self.LensID, keep='first')
 		# Add sources data
