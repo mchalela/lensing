@@ -400,12 +400,12 @@ class NewCatalog(object):
 		'''Add a column in a given index position
 		'''
 		if self.cat_type == 'expanded':
-			assert self.data.shape[0] == data.shape[0], 
+			assert self.data.shape[0] == data.shape[0], \
 				'Number of sources ({}) does not match \
 				the number of rows in data ({})'.format(self.data.shape[0], data.shape[0])
 			self.data.insert(index, name, data)
 		else:
-			assert self.data_L.shape[0] == data.shape[0], 
+			assert self.data_L.shape[0] == data.shape[0], \
 				'Number of lenses ({}) does not match \
 				the number of rows in data ({})'.format(self.data_L.shape[0], data.shape[0])
 			self.data_L.insert(index, name, data)
