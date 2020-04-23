@@ -125,395 +125,249 @@ class formats:
 	@classonly
 	def pd2hdf5(cls, dtype):
 		return None
-#
+
 ###############################################################################
 
-class Catalog(object):
-	'''Class for catalog of source galaxies
+def read_catalog(file):
+	'''Load catalog saved with the Catalog.write_to() method
 	'''
+	with fits.open(file) as f:
+		cat_type = f[1].header['CATTYPE']
+		name = f[1].header['CATNAME']
+		LensID = f[1].header['CATNAME']
+		if LensID == 'None': LensID=None
+		if cat_type.lower() == 'expanded':
+			data = Table(f[1].data).to_pandas()
+			cat = ExpandedCatalog(name=name, data=data, LensID=LensID)
+		elif cat_type.lower() == 'compressed':
+			data_L = Table(f[1].data).to_pandas()
+			data_S = Table(f[2].data).to_pandas()
+			cat = CompressedCatalog(name=name, data_L=data_L, data_S=data_S, LensID=LensID)
+		else:
+			raise ValueError, 'CATTYPE = {} is not a valid catalog.'.format(cat_type)
+	return cat
 
-	def __init__(self, data=None, data_L=None, data_S=None, 
-						name='Catalog', cat_type='expanded'):
-		self._LensID = 'ID'
+
+class ExpandedCatalog(object):
+
+	def __init__(self, name='Catalog', data=None, LensID=None):
+		self.cat_type = 'Expanded'
 		self.name = name
-		
-		assert cat_type.lower() in ['expanded', 'compressed'], \
-			'cat_type not recognized. Use: Expanded or Compressed.'
-		self.cat_type = cat_type.lower()
-		if self.cat_type is 'expanded':
-			self._data = data
-			self.sources = 0 if data is None else data.shape[0]
-		else:
-			self._data_L, self._data_S  = data_L, data_S
-			self.lenses = 0 if data_L is None else data_L.shape[0]
-			self.sources = 0 if data_S is None else data_S.shape[0]
-
-	def __add__(self, catalog2):
-		assert self.cat_type == 'compressed', \
-			'Operator + is defined for compressed catalogs. \
-			You may want to use the "&" operator instead.'
-
-		if self.data.index.name == self.LensID:
-			keepID=True
-			self.data.reset_index(drop=False, inplace=True)
-		else:
-			keepID=False
-
-		catalog3 = Catalog(name=self.name+'+'+catalog2.name, cat_type='lenses')
-		catalog3.data = pd.concat([self.data, catalog2.data])
-		catalog3.data = catalog3.data.drop_duplicates(subset=self.LensID, keep='first')
-		if keepID: catalog3.data.set_index(self.LensID, inplace=True)
-		return catalog3
-
-	def __and__(self, catalog2):
-		catalog3 = Catalog(name=self.name+'&'+catalog2.name)
-		catalog3.data = pd.concat([self.data, catalog2.data]).reset_index(drop=True)
-		return catalog3
-
-	def __str__(self):
-		output = '{0} Catalog\n'.format(self.cat_type.capitalize())+ \
-				'Name: {0}\n'.format(self.name)
-		if self.cat_type in	['expanded', 'sources']:
-			output += 'Sources: {0}\n'.format(self.sources)
-		else:
-			output += 'Lenses: {0}\n'.format(self.sources)
-		if self.cat_type != 'sources':
-			output += 'LensID: {0}\n'.format(self.LensID)
-		output += 'Columns: {0}'.format(list(self.data.columns.values))
-		return output
-
-	def __repr__(self):
-		return self.__str__()
-
-	@property
-	def LensID(self):
-		return self._LensID
-	@LensID.setter
-	def LensID(self, LensID):
-		if self.cat_type == 'expanded':
-			colnames = list(self.data.columns.values)
-		else:
-			colnames = list(self.data_L.columns.values)
-		if LensID in colnames:
-			self._LensID = LensID
-		else:
-			raise KeyError, '{} is not a valid column name.'.format(LensID)
-
-	@property
-	def data(self):
-		return self._data
-	@data.setter
-	def data(self, data):
-		if data is not None:
-			self._data = data
-			self.sources = data.shape[0]
-	@property
-	def data_L(self):
-		assert self.cat_type =='compressed', 'Expanded catalog does not have data_L property'
-		return self._data_L
-	@data_L.setter
-	def data_L(self, data_L):
-		assert self.cat_type =='compressed', 'Expanded catalog does not have data_L property'
-		if data_L is not None:
-			self._data_L = data_L
-			self.lenses = data_L.shape[0]
-	@property
-	def data_S(self):
-		assert self.cat_type =='compressed', 'Expanded catalog does not have data_S property'
-		return self._data_S
-	@data_S.setter
-	def data_S(self, data_S):
-		assert self.cat_type =='compressed', 'Expanded catalog does not have data_S property'
-		if data_S is not None:
-			self._data_S = data_S
-			self.sources = data_S.shape[0]
-
-	def add_column(self, index=0, name=None, data=None):
-		'''Add a column in a given index position
-		'''
-		if self.cat_type == 'expanded':
-			assert self.data.shape[0] == data.shape[0], \
-				'Number of sources ({}) does not match \
-				the number of rows in data ({})'.format(self.data.shape[0], data.shape[0])
-			self.data.insert(index, name, data)
-		else:
-			assert self.data_L.shape[0] == data.shape[0], \
-				'Number of lenses ({}) does not match \
-				the number of rows in data ({})'.format(self.data_L.shape[0], data.shape[0])
-			self.data_L.insert(index, name, data)
-
-
-	def remove_column(self, columns):
-		'''Remove a list of columns
-		'''
-		self.data.drop(columns=columns)
-
-	def write_to(self, file, format='FITS', overwrite=False):
-		'''Save the source catalog
-		'''
-		if format=='FITS':
-			if self.cat_type == 'expanded':
-				cols = []
-				for name in list(self.data.columns):
-					c = fits.Column(name=str(name), 
-						format=formats.pd2fits(self.data[name]), array=self.data[name].to_numpy())
-					cols.append(c)
-				hdu = fits.BinTableHDU.from_columns(cols)
-				for line in hdu.header.items():
-					if 'TFORM' in line[0]:
-						del hdu.header[line[0]]
-						hdu.header.append(line, end=True)
-				hdu.header.insert(9, ('CATNAME', self.name))
-				hdu.header.insert(10, ('CATTYPE', self.cat_type))
-				hdulist = [fits.PrimaryHDU(), hdu]
-				hdulist.writeto(file, overwrite=overwrite)
-			else:
-				hdulist = [fits.PrimaryHDU()]
-				for data in [self.data_L, self.data_S]:
-					cols = []
-					for name in list(data.columns):
-						c = fits.Column(name=str(name), 
-							format=formats.pd2fits(data[name]), array=data[name].to_numpy())
-						cols.append(c)
-					hdu = fits.BinTableHDU.from_columns(cols)
-					for line in hdu.header.items():
-						if 'TFORM' in line[0]:
-							del hdu.header[line[0]]
-							hdu.header.append(line, end=True)
-					hdu.header.insert(9, ('CATNAME', self.name))
-					hdu.header.insert(10, ('CATTYPE', self.cat_type))
-					hdulist.append(hdu)
-				hdulist.writeto(file, overwrite=overwrite)
-
-		else:
-			print 'Format '+format+' is not implemented yet. Use "FITS"'
-		pass
-
-	@classonly
-	def read_catalog(self, file):
-		'''Load catalog saved with the Catalog.write_to() method
-		'''
-		with fits.open(file) as f:
-			cat_type = f[1].header['CATTYPE']
-			name = f[1].header['CATNAME']
-			if cat_type == 'expanded':
-				cat = Catalog(name=name, cat_type=cat_type)
-				cat.data = Table(f[1].data).to_pandas()
-			elif cat_type == 'compressed':
-				cat = Catalog(name=name, cat_type=cat_type)
-				cat.data_L = Table(f[1].data).to_pandas()
-				cat.data_S = Table(f[2].data).to_pandas()
-			else:
-				raise ValueError, 'CATTYPE = {} is not a valid catalog.'.format(cat_type)
-		return cat
-
-
-class NewCatalog(object):
-	'''Class for catalog of source galaxies
-	'''
-
-	def __init__(self, name='Catalog'):
-		self._LensID = 'ID'
-		self.name = name
-
-	def __add__(self, catalog2):
-		assert self.cat_type == 'compressed', \
-			'Operator + is defined for compressed catalogs. \
-			You may want to use the "&" operator instead.'
-
-		if self.data.index.name == self.LensID:
-			keepID=True
-			self.data.reset_index(drop=False, inplace=True)
-		else:
-			keepID=False
-
-		catalog3 = Catalog(name=self.name+'+'+catalog2.name, cat_type='lenses')
-		catalog3.data = pd.concat([self.data, catalog2.data])
-		catalog3.data = catalog3.data.drop_duplicates(subset=self.LensID, keep='first')
-		if keepID: catalog3.data.set_index(self.LensID, inplace=True)
-		return catalog3
-
-	def __and__(self, catalog2):
-		catalog3 = Catalog(name=self.name+'&'+catalog2.name)
-		catalog3.data = pd.concat([self.data, catalog2.data]).reset_index(drop=True)
-		return catalog3
-
-	def __str__(self):
-		output = '{0} Catalog\n'.format(self.cat_type.capitalize())+ \
-				'Name: {0}\n'.format(self.name)
-		if self.cat_type in	['expanded', 'sources']:
-			output += 'Sources: {0}\n'.format(self.sources)
-		else:
-			output += 'Lenses: {0}\n'.format(self.sources)
-		if self.cat_type != 'sources':
-			output += 'LensID: {0}\n'.format(self.LensID)
-		output += 'Columns: {0}'.format(list(self.data.columns.values))
-		return output
-
-	def __repr__(self):
-		return self.__str__()
-
-	@property
-	def LensID(self):
-		return self._LensID
-	@LensID.setter
-	def LensID(self, LensID):
-		if self.cat_type == 'expanded':
-			colnames = list(self.data.columns.values)
-		else:
-			colnames = list(self.data_L.columns.values)
-		if LensID in colnames:
-			self._LensID = LensID
-		else:
-			raise KeyError, '{} is not a valid column name.'.format(LensID)
-
-	@property
-	def data(self):
-		return self._data
-	@data.setter
-	def data(self, data):
-		if data is not None:
-			self._data = data
-			self.sources = data.shape[0]
-	@property
-	def data_L(self):
-		assert self.cat_type =='compressed', 'Expanded catalog does not have data_L property'
-		return self._data_L
-	@data_L.setter
-	def data_L(self, data_L):
-		assert self.cat_type =='compressed', 'Expanded catalog does not have data_L property'
-		if data_L is not None:
-			self._data_L = data_L
-			self.lenses = data_L.shape[0]
-	@property
-	def data_S(self):
-		assert self.cat_type =='compressed', 'Expanded catalog does not have data_S property'
-		return self._data_S
-	@data_S.setter
-	def data_S(self, data_S):
-		assert self.cat_type =='compressed', 'Expanded catalog does not have data_S property'
-		if data_S is not None:
-			self._data_S = data_S
-			self.sources = data_S.shape[0]
-
-	def add_column(self, index=0, name=None, data=None):
-		'''Add a column in a given index position
-		'''
-		if self.cat_type == 'expanded':
-			assert self.data.shape[0] == data.shape[0], \
-				'Number of sources ({}) does not match \
-				the number of rows in data ({})'.format(self.data.shape[0], data.shape[0])
-			self.data.insert(index, name, data)
-		else:
-			assert self.data_L.shape[0] == data.shape[0], \
-				'Number of lenses ({}) does not match \
-				the number of rows in data ({})'.format(self.data_L.shape[0], data.shape[0])
-			self.data_L.insert(index, name, data)
-
-
-	def remove_column(self, columns):
-		'''Remove a list of columns
-		'''
-		self.data.drop(columns=columns)
-
-	def write_to(self, file, format='FITS', overwrite=False):
-		'''Save the source catalog
-		'''
-		if format=='FITS':
-			if self.cat_type == 'expanded':
-				cols = []
-				for name in list(self.data.columns):
-					c = fits.Column(name=str(name), 
-						format=formats.pd2fits(self.data[name]), array=self.data[name].to_numpy())
-					cols.append(c)
-				hdu = fits.BinTableHDU.from_columns(cols)
-				for line in hdu.header.items():
-					if 'TFORM' in line[0]:
-						del hdu.header[line[0]]
-						hdu.header.append(line, end=True)
-				hdu.header.insert(9, ('CATNAME', self.name))
-				hdu.header.insert(10, ('CATTYPE', self.cat_type))
-				hdulist = [fits.PrimaryHDU(), hdu]
-				hdulist.writeto(file, overwrite=overwrite)
-			else:
-				hdulist = [fits.PrimaryHDU()]
-				for data in [self.data_L, self.data_S]:
-					cols = []
-					for name in list(data.columns):
-						c = fits.Column(name=str(name), 
-							format=formats.pd2fits(data[name]), array=data[name].to_numpy())
-						cols.append(c)
-					hdu = fits.BinTableHDU.from_columns(cols)
-					for line in hdu.header.items():
-						if 'TFORM' in line[0]:
-							del hdu.header[line[0]]
-							hdu.header.append(line, end=True)
-					hdu.header.insert(9, ('CATNAME', self.name))
-					hdu.header.insert(10, ('CATTYPE', self.cat_type))
-					hdulist.append(hdu)
-				hdulist.writeto(file, overwrite=overwrite)
-
-		else:
-			print 'Format '+format+' is not implemented yet. Use "FITS"'
-		pass
-
-	@classonly
-	def read_catalog(self, file):
-		'''Load catalog saved with the Catalog.write_to() method
-		'''
-		with fits.open(file) as f:
-			cat_type = f[1].header['CATTYPE']
-			name = f[1].header['CATNAME']
-			if cat_type == 'expanded':
-				cat = Catalog(name=name, cat_type=cat_type)
-				cat.data = Table(f[1].data).to_pandas()
-			elif cat_type == 'compressed':
-				cat = Catalog(name=name, cat_type=cat_type)
-				cat.data_L = Table(f[1].data).to_pandas()
-				cat.data_S = Table(f[2].data).to_pandas()
-			else:
-				raise ValueError, 'CATTYPE = {} is not a valid catalog.'.format(cat_type)
-		return cat
-
-
-#
-class ExpandedCatalog(Catalog):
-
-	def __init__(self, data=None):
-		self.cat_type = 'expanded'
+		self._LensID = LensID
 		self._data = data
+		self.lenses = 0
 		self.sources = 0 if data is None else data.shape[0]
 
+	def __str__(self):
+		output = '<Expanded Catalog>\n'
+		output += 'Name: {0}\n'.format(self.name)
+		output += 'LensID: {0}\n'.format(self.LensID)
+		output += 'Lenses: {0}\n'.format(self.sources)
+		output += 'Sources: {0}\n'.format(self.sources)
+		output += 'Columns: {0}\n'.format(list(self.data.columns))
+		return output
+
+	def __repr__(self):
+		return self.__str__()
+
+	def __add__(self, catalog2):
+		raise AttributeError, 'Addition not implemented for Expanded Catalogs. Use "&".'
+		return None
+
+	def __and__(self, catalog2):
+		catalog3 = Catalog(name=self.name+'&'+catalog2.name)
+		catalog3.data = pd.concat([self.data, catalog2.data]).reset_index(drop=True)
+		return catalog3
+
 	@property
 	def LensID(self):
 		return self._LensID
+
 	@LensID.setter
 	def LensID(self, LensID):
+		colnames = [None] + list(self.data.columns)
+		if self.data.index.name is not None:
+			colnames += [self.data.index.name]
+		assert LensID in colnames, '{} is not a valid column name.'.format(LensID)
+		self._LensID = LensID
+		self.lenses = self.data[LensID].unique().shape[0]
+
+	@property
+	def data(self):
+		return self._data
+	@data.setter
+	def data(self, newdata):
+		if newdata is not None:
+			self._data = newdata
+			self.sources = newdata.shape[0]
+			self.lenses = self.data[LensID].unique().shape[0]
+
+
+	def add_column(self, index=0, name=None, data=None):
+		'''Add a column in a given index position
+		'''
+		assert self.data.shape[0] == data.shape[0], \
+				'Number of sources ({}) does not match \
+				the number of rows in data ({})'.format(self.data.shape[0], data.shape[0])
+		self.data.insert(index, name, data)
+
+	def remove_column(self, columns, inplace=False):
+		'''Remove a list of columns
+		'''
+		self.data.drop(columns=columns, inplace=inplace)
+
+	def write_to(self, file, format='FITS', overwrite=False):
+		'''Save the source catalog
+		'''
+		assert format.upper()=='FITS', 'Format '+format+' is not implemented yet. Use "FITS"'
 		
-		colnames = list(self.data.columns.values) 
-		if LensID in colnames or LensID in :
-			self._LensID = LensID
-		else:
-			raise KeyError, '{} is not a valid column name.'.format(LensID)
+		cols = []
+		for name in list(self.data.columns):
+			c = fits.Column(name=str(name), 
+				format=formats.pd2fits(self.data[name]), array=self.data[name].to_numpy())
+			cols.append(c)
+		hdu = fits.BinTableHDU.from_columns(cols)
+		for line in hdu.header.items():
+			if 'TFORM' in line[0]:
+				del hdu.header[line[0]]
+				hdu.header.append(line, end=True)
+		hdu.header.insert(8, ('CATNAME', self.name))
+		hdu.header.insert(9, ('CATTYPE', 'EXPANDED'))
+		hdu.header.insert(10, ('LENSID', str(self.LensID)))
+		hdulist = fits.HDUList([fits.PrimaryHDU(), hdu])
+		hdulist.writeto(file, overwrite=overwrite)
 
 
-	def write_to(self):
+class CompressedCatalog(object):
 
-	def read_catalog(self):
-
-
-class CompressedCatalog(Catalog):
-
-	def __init__(self, data_L=None, data_S=None):
-		self.cat_type = 'compressed'
+	def __init__(self, name='Catalog', data_L=None, data_S=None, LensID=None):
+		self.cat_type = 'Compressed'
+		self.name = name
+		self._LensID = LensID
 		self._data_L = data_L
 		self._data_S = data_S
 		self.lenses = 0 if data_L is None else data_L.shape[0]
 		self.sources = 0 if data_S is None else data_S.shape[0]
 
-	def write_to(self):
+	def __str__(self):
+		output = '<Compressed Catalog>\n'
+		output += 'Name: {0}\n'.format(self.name)
+		output += 'LensID: {0}\n'.format(self.LensID)
+		output += 'Lenses: {0}\n'.format(self.lenses)
+		output += 'Sources: {0}\n'.format(self.sources)
+		output += 'Lenses Columns: {0}\n'.format(list(self.data_L.columns))
+		output += 'Sources Columns: {0}\n'.format(list(self.data_S.columns))
+		return output
 
-	def read_catalog(self):
+	def __repr__(self):
+		return self.__str__()
+
+	def __add__(self, catalog2):
+		assert self.LensID is not None, \
+			'Please set the LensID property with a valid column name from data_L.'
+
+		keepID_L, keepID_S = False, False
+		if self.data_L.index.name == self.LensID:
+			keepID = True
+			self.data_L.reset_index(drop=False, inplace=True)
+		if self.data_S.index.name == 'CATID':
+			keepID_S = True
+			self.data_S.reset_index(drop=False, inplace=True)
+
+		# Add lenses data
+		catalog3 = CompressedCatalog(name=self.name+'+'+catalog2.name)
+		catalog3.data_L = pd.concat([self.data_L, catalog2.data_L])
+		catalog3.data_L = catalog3.data_L.drop_duplicates(subset=self.LensID, keep='first')
+		# Add sources data
+		catalog3.data_S = pd.concat([self.data_S, catalog2.data_S])
+		# Restore IDs
+		if keepID_L: catalog3.data_L.set_index(self.LensID, inplace=True)
+		if keepID_S: catalog3.data_S.set_index('CATID', inplace=True)
+		return catalog3
+
+	def __and__(self, catalog2):
+
+		keepID_L, keepID_S = False, False
+		if self.data_L.index.name == self.LensID:
+			keepID = True
+			self.data_L.reset_index(drop=False, inplace=True)
+		if self.data_S.index.name == 'CATID':
+			keepID_S = True
+			self.data_S.reset_index(drop=False, inplace=True)
+
+		catalog3 = CompressedCatalog(name=self.name+'&'+catalog2.name)
+		catalog3.data_L = pd.concat([self.data_L, catalog2.data_L])
+		catalog3.data_S = pd.concat([self.data_S, catalog2.data_S])
+		# Restore IDs
+		if keepID_L: catalog3.data_L.set_index(self.LensID, inplace=True)
+		if keepID_S: catalog3.data_S.set_index('CATID', inplace=True)		
+		return catalog3
+
+	@property
+	def LensID(self):
+		return self._LensID
+
+	@LensID.setter
+	def LensID(self, LensID):
+		colnames = [None] + list(self.data_L.columns)
+		if self.data_L.index.name is not None:
+			colnames += [self.data_L.index.name]
+		assert LensID in colnames, '{} is not a valid column name.'.format(LensID)
+		self._LensID = LensID
+
+	@property
+	def data_L(self):
+		return self._data_L
+	@data_L.setter
+	def data_L(self, newdata_L):
+		if newdata_L is not None:
+			self._data_L = newdata_L
+			self.lenses = newdata_L.shape[0]
+	@property
+	def data_S(self):
+		return self._data_S
+	@data_S.setter
+	def data_S(self, newdata_S):
+		if newdata_S is not None:
+			self._data_S = newdata_S
+			self.sources = newdata_S.shape[0]
+
+	def add_column(self, index=0, name=None, data=None):
+		'''Add a column in a given index position
+		'''
+		assert self.data_L.shape[0] == data.shape[0], \
+				'Number of lenses ({}) does not match \
+				the number of rows in data ({})'.format(self.data_L.shape[0], data.shape[0])
+		self.data_L.insert(index, name, data)
+
+	def remove_column(self, columns, inplace=False):
+		'''Remove a list of columns
+		'''
+		self.data_L.drop(columns=columns, inplace=inplace)
+
+	def write_to(self, file, format='FITS', overwrite=False):
+		'''Save the source catalog
+		'''
+		assert format.upper()=='FITS', 'Format '+format+' is not implemented yet. Use "FITS"'
+		
+		hdulist = [fits.PrimaryHDU()]
+		for data in [self.data_L, self.data_S]:
+			cols = []
+			for name in list(data.columns):
+				c = fits.Column(name=str(name), 
+					format=formats.pd2fits(data[name]), array=data[name].to_numpy())
+				cols.append(c)
+			hdu = fits.BinTableHDU.from_columns(cols)
+			for line in hdu.header.items():
+				if 'TFORM' in line[0]:
+					del hdu.header[line[0]]
+					hdu.header.append(line, end=True)
+			hdu.header.insert(8, ('CATNAME', self.name))
+			hdu.header.insert(9, ('CATTYPE', 'COMPRESSED'))
+			hdu.header.insert(10, ('LENSID', str(self.LensID)))
+			hdulist.append(hdu)
+		hdulist = fits.HDUList(hdulist)
+		hdulist.writeto(file, overwrite=overwrite)
 
 
 
@@ -556,7 +410,7 @@ class Survey(object):
 
 		if cls.compressed:
 			# One catalog, two data frames, one for galaxies and one for groups
-			cat = Catalog(name=cls.name, cat_type='compressed')
+			cat = CompressedCatalog(name=cls.name)
 
 			# Lenses data
 			src_per_lens = np.array( map(len, dd) )
@@ -583,7 +437,7 @@ class Survey(object):
 
 		else:
 			# One catalog with repeated galaxies	
-			cat = Catalog(name=cls.name, cat_type='expanded')
+			cat = ExpandedCatalog(name=cls.name)
 			ii = list(itertools.chain.from_iterable(ii))
 			cat.data = cls.data.iloc[ii].reset_index(drop=True)
 
