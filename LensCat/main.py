@@ -232,12 +232,12 @@ class Catalog(object):
 		'''Add a column in a given index position
 		'''
 		if self.cat_type == 'expanded':
-			assert self.data.shape[0] == data.shape[0], 
+			assert self.data.shape[0] == data.shape[0], \
 				'Number of sources ({}) does not match \
 				the number of rows in data ({})'.format(self.data.shape[0], data.shape[0])
 			self.data.insert(index, name, data)
 		else:
-			assert self.data_L.shape[0] == data.shape[0], 
+			assert self.data_L.shape[0] == data.shape[0], \
 				'Number of lenses ({}) does not match \
 				the number of rows in data ({})'.format(self.data_L.shape[0], data.shape[0])
 			self.data_L.insert(index, name, data)
@@ -483,6 +483,18 @@ class ExpandedCatalog(Catalog):
 		self.cat_type = 'expanded'
 		self._data = data
 		self.sources = 0 if data is None else data.shape[0]
+
+	@property
+	def LensID(self):
+		return self._LensID
+	@LensID.setter
+	def LensID(self, LensID):
+		
+		colnames = list(self.data.columns.values) 
+		if LensID in colnames or LensID in :
+			self._LensID = LensID
+		else:
+			raise KeyError, '{} is not a valid column name.'.format(LensID)
 
 
 	def write_to(self):
