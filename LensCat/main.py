@@ -134,7 +134,7 @@ def read_catalog(file):
 	with fits.open(file) as f:
 		cat_type = f[1].header['CATTYPE']
 		name = f[1].header['CATNAME']
-		LensID = f[1].header['CATNAME']
+		LensID = f[1].header['LENSID']
 		if LensID == 'None': LensID=None
 		if cat_type.lower() == 'expanded':
 			data = Table(f[1].data).to_pandas()
