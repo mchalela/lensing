@@ -47,7 +47,7 @@ class Density:
 
 	def Bar_with_M200(self, r_h, logM200_h=13.):
 		'''
-		Wraper to fit the Barionic with the M200 of the halo instead of Mstar.
+		Wraper to fit the Barionic mass with the M200 of the halo instead of Mstar.
 		We use the scaling relation of Johnston et a. 2007. Section 5.4
 		https://arxiv.org/pdf/0709.1159.pdf
 		'''
