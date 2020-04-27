@@ -90,9 +90,7 @@ def ParamPrior(param, param_name):
     if param_name == 'Delta': return 0.0
 
 
-class ObjectiveFunction(object):
-    __metaclass__ = ABCMeta
-
+class ObjectiveFunction(object, metaclass=ABCMeta):
     @abc.abstractmethod
     def __call__(self):
         """
@@ -104,9 +102,7 @@ class ObjectiveFunction(object):
         pass
 
 
-class LogLikelihood(ObjectiveFunction):
-    __metaclass__ = ABCMeta
-
+class LogLikelihood(ObjectiveFunction, metaclass=ABCMeta):
     def __init__(self, x, y, model):
         """
         x : iterable
@@ -167,9 +163,9 @@ class GaussianLogLikelihood(LogLikelihood, object):
     def evaluate(self, pars):
 
         # Fix values of fixed parameters
-        print 'Antes...', pars
+        print('Antes...', pars)
         pars = PrepareParameters(GlobalModel, pars)
-        print 'Despues...', pars
+        print('Despues...', pars)
 
         _fitter_to_model_params(GlobalModel, pars)
         mean_model = GlobalModel(self.x)
@@ -180,9 +176,7 @@ class GaussianLogLikelihood(LogLikelihood, object):
         return self.evaluate(pars)        
 
 
-class LogPosterior(ObjectiveFunction):
-    __metaclass__ = ABCMeta
-    
+class LogPosterior(ObjectiveFunction, metaclass=ABCMeta):
     def __init__(self, x, y, model):
         """
         x : iterable
@@ -272,7 +266,7 @@ class Fitter(object):
 
         global GlobalModel, isGlobalModelclear
         if not isGlobalModelclear:
-            print ' Clearing previous model.'
+            print(' Clearing previous model.')
             self.clear()
 
         self.r = r
@@ -306,10 +300,10 @@ class Fitter(object):
         args = (self.r, self.shear, self.shear_err)
         sampler = emcee.EnsembleSampler(nwalkers, ndim, loglike, pool=pool)
         # the MCMC chains take some time
-        print 'Running MCMC...'
+        print('Running MCMC...')
         t0 = time.time()
         pos, prob, state = sampler.run_mcmc(p0, steps)
-        print 'Completed in {} min'.format((time.time()-t0)/60.)
+        print('Completed in {} min'.format((time.time()-t0)/60.))
         pool.terminate()
 
         # save the chain and return file name
@@ -321,11 +315,11 @@ class Fitter(object):
 
     def Minimize(self, verbose=True):
 
-        print 'Minimizing...'
+        print('Minimizing...')
         t0 = time.time()
         output = scipy.optimize.curve_fit(GlobalModel.evaluate, 
             self.r, self.shear, sigma=self.shear_err, p0=self.start, absolute_sigma=True)
-        print 'Completed in {} min'.format((time.time()-t0)/60.)
+        print('Completed in {} min'.format((time.time()-t0)/60.))
 
         output = self.Minimize_OutputAnalysis(output)
         return output

@@ -127,12 +127,12 @@ def _precompute_lensing_distances(zl_max, zs_max, dz=0.0005, cosmo=None):
 
     '''
     if not isinstance(cosmo, FLRW):
-        raise TypeError, 'cosmo is not an instance of astropy.cosmology.FLRW' 
+        raise TypeError('cosmo is not an instance of astropy.cosmology.FLRW') 
     zl = np.arange(0., zl_max+dz, dz)
     zs = np.arange(0., zs_max+dz, dz)
 
     B = scipy.sparse.lil_matrix((len(zl), len(zs)), dtype=np.float64)
-    for i in xrange(len(zl)):
+    for i in range(len(zl)):
             B[i, i:] = cosmo.angular_diameter_distance_z1z2(zl[i], zs[i:]).value
 
     path = os.path.dirname(os.path.abspath(__file__))+'/'
@@ -169,7 +169,7 @@ def compute_lensing_distances(zl, zs, precomputed=False, dz=0.0005, cosmo=None):
     '''
     if not precomputed:
         if not isinstance(cosmo, FLRW):
-            raise TypeError, 'cosmo is not an instance of astropy.cosmology.FLRW'           
+            raise TypeError('cosmo is not an instance of astropy.cosmology.FLRW')           
         DL  = cosmo.angular_diameter_distance(zl).value
         DS  = cosmo.angular_diameter_distance(zs).value
         DLS = cosmo.angular_diameter_distance_z1z2(zl, zs).value

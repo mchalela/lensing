@@ -20,7 +20,7 @@ class Profile(object):
 	def __init__(self, cat=None, rin_hMpc=0.1, rout_hMpc=10., bins=10, space='log', boot_n=0, dz=0., cosmo=cosmo):
 		
 		if not isinstance(cat, LensCat.CompressedCatalog, LensCat.ExpandedCatalog):
-			raise TypeError, 'cat must be a LensCat catalog.'
+			raise TypeError('cat must be a LensCat catalog.')
 
 		# Create bins...
 		self.set_bins(rin_hMpc=rin_hMpc, rout_hMpc=rout_hMpc, bins=bins, space=space)
@@ -165,7 +165,7 @@ class Profile(object):
 			f.write('# '+'\n')
 			f.write('# Lensing profile '+'\n')
 			if header is not None:
-				for key, value in header.items():
+				for key, value in list(header.items()):
 					f.write('# '+key.ljust(14)+' = '+str(value) +'\n')
 
 			f.write('# '+'\n')

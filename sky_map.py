@@ -27,7 +27,7 @@ def box_region(m, lon_min, lon_max, lat_min, lat_max, **kwargs):
 							lats[::-1], ones*lat_min))
 
 	x, y = m( lons, lats )
-	xy = zip(x,y)
+	xy = list(zip(x,y))
 	#return xy
 	poly = Polygon( xy, **kwargs)#facecolor='red', alpha=0.4 )
 	plt.gca().add_patch(poly)

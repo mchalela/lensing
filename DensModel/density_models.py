@@ -9,7 +9,7 @@ import scipy.special as sp
 try:
 	import camb
 except Exception:
-	print 'WARNING: [lensing.densmodel] No module named camb. Used in second halo profile.'
+	print('WARNING: [lensing.densmodel] No module named camb. Used in second halo profile.')
 
 
 cvel= 299792458.		# Speed of light (m.s-1)
@@ -30,7 +30,7 @@ class Density:
 		self.z = z
 		if cosmo is None:
 			self.cosmo = Planck15
-			print 'Assuming Planck15 cosmology: ', self.cosmo
+			print('Assuming Planck15 cosmology: ', self.cosmo)
 		else:
 			self.cosmo = cosmo
 
@@ -164,7 +164,7 @@ class Density:
 
 		BIN=len(r_h)
 		delta_sigma_off=[]
-		for i in xrange(BIN):
+		for i in range(BIN):
 			x=r_h[i]
 			err_max=1e-1
 			err_min=1e-2
@@ -251,9 +251,9 @@ class Density:
 
 				#Linear spectra
 				pars.NonLinear = camb.model.NonLinear_none
-				print 'P(k): get_results...'
+				print('P(k): get_results...')
 				results = camb.get_results(pars)
-				print 'P(k): get_matter_power_spectrum...'
+				print('P(k): get_matter_power_spectrum...')
 				kh, zz, Pk = results.get_matter_power_spectrum(minkh=self.kh_min, maxkh=self.kh_max, npoints = 10**5)
 
 				# Columns: kh (h/Mpc)	Pk (Mpc^3/h^3)
@@ -304,7 +304,7 @@ class Density:
 				k2_Pk = self.kh_bins*self.kh_bins*Pk
 				k2_Pk_next = k2_Pk[1:]
 
-				print 'Bias integral...'
+				print('Bias integral...')
 				I = []
 				for R_i in R_bins:	
 					#Fourier transform of top-hat window function SQUARED
@@ -329,7 +329,7 @@ class Density:
 
 			# Interpolation (cubic spline) ----------------------------------------------------------------------
 			if ((M200_h<Mass_t[0]) or (M200_h>Mass_t[-1])):
-				print 'WARNING: M200_h is out of range in '+table_name+'. The CubicSpline will extrapolate!'
+				print('WARNING: M200_h is out of range in '+table_name+'. The CubicSpline will extrapolate!')
 			cs = CubicSpline(Mass_t,nu_t)
 			nu = cs(M200_h)
 
@@ -384,7 +384,7 @@ class Density:
 
 		#print 'Shear integral...'
 		I = []
-		for i in xrange(len(r_h)):	
+		for i in range(len(r_h)):	
 			# Computes bessel function
 			#theta = r_i/Dang_h
 			J2_i = self.J2[i,:] #sp.jn(2, l_bins*theta)
@@ -462,7 +462,7 @@ class DensityModels:
 
 	def SecondHalo(self, logM200_0=13., Delta=200.,
 		logM200_fixed=False, Delta_fixed=True):
-		if not Delta_fixed: print 'WARNING: You should fix Delta.'
+		if not Delta_fixed: print('WARNING: You should fix Delta.')
 		
 		model = models.custom_model(self.density.SecondHalo)
 		init_mod = model(logM200_h=logM200_0, Delta=Delta, name='SecondHalo')

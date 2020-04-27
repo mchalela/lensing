@@ -24,10 +24,10 @@ shear_obs = profile['shear'] / 0.7	# Density contrast in h*Msun/pc2
 shear_err = profile['shear_error'] / 0.7
 args_fix_off=(offset, z, rbins, shear_obs, shear_err)
 args_fix_none=(z, rbins, shear_obs, shear_err)
-print 'Ndim 2'
+print('Ndim 2')
 DensModel.mcmc.mcmc_create_samples(args=args_fix_off, ndim=2, nwalkers=10, steps=300, file_name=name, threads=4)
 samples_file = 'samples_dim.10.300.2.'+name+'.txt'
-print 'Ndim 3'
+print('Ndim 3')
 DensModel.mcmc.mcmc_create_samples(args=args_fix_none, ndim=3, nwalkers=10, steps=300, file_name=name, threads=56)
 samples_file = 'samples_dim.10.300.3.'+name+'.txt'
 
@@ -74,9 +74,8 @@ if i_can_wait:
 
 samples[:, 0] = 10**(log_samples[:, 0])
 
-M_mcmc = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]),
-                             zip(*np.percentile(samples, [16, 50, 84],
-                                                axis=0)))
+M_mcmc = [(v[1], v[2]-v[1], v[1]-v[0]) for v in zip(*np.percentile(samples, [16, 50, 84],
+                                                axis=0))]
 # Plot fitted profile for ndim = 2 (offset fixed)
 M_fit = M_mcmc[0][0] ; M_perr = M_mcmc[0][1] ; M_merr = M_mcmc[0][2]
 p_fit = M_mcmc[1][0] ; p_perr = M_mcmc[1][1] ; p_merr = M_mcmc[1][2]
@@ -112,4 +111,4 @@ plt.loglog()
 plt.legend()
 plt.title(M_label)
 plt.xlabel('r [Mpc$\,h^{-1}$]')
-plt.ylabel(u'$\Delta\Sigma [h\,M_{\odot}\,pc^{-2}]$')
+plt.ylabel('$\Delta\Sigma [h\,M_{\odot}\,pc^{-2}]$')

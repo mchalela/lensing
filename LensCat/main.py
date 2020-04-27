@@ -55,7 +55,7 @@ class cat_paths:
 	elif node in ['univac','multivac']:
 		p = '/home/martin/Documentos/Doctorado/Lentes/lensing/'
 	else:
-		raise ValueError, 'There is no catalog path for the node: '+node
+		raise ValueError('There is no catalog path for the node: '+node)
 
 	cs82 = {'CS1': os.path.join(p,'CS82','cs82_combined_lensfit_sources_nozcuts_aug_2015.h5')}
 
@@ -77,7 +77,7 @@ def read_columns(hdf5file, columns):
 	'''Read catalogue columns into pandas DataFrame
 	'''
 	file = h5py.File(hdf5file)
-	groups = file.keys()
+	groups = list(file.keys())
 
 	data = pd.DataFrame()
 	for i, col in enumerate(columns):
@@ -114,11 +114,11 @@ class formats:
 		inner_dtype = type(column.iloc[0])
 		# este if es muy pero muy horrible...
 		if dtype in list(cls.np2fits.keys()):
-			for npfmt in cls.np2fits.keys():
+			for npfmt in list(cls.np2fits.keys()):
 				if is_dtype_equal(dtype, npfmt):
 					return cls.np2fits[npfmt]
 		elif inner_dtype in list(cls.np2fits_obj.keys()):
-			for npfmt in cls.np2fits_obj.keys():
+			for npfmt in list(cls.np2fits_obj.keys()):
 				if is_dtype_equal(inner_dtype, npfmt):
 					return cls.np2fits_obj[npfmt]
 	
@@ -144,7 +144,7 @@ def read_catalog(file):
 			data_S = Table(f[2].data).to_pandas()
 			cat = CompressedCatalog(name=name, data_L=data_L, data_S=data_S, LensID=LensID)
 		else:
-			raise ValueError, 'CATTYPE = {} is not a valid catalog.'.format(cat_type)
+			raise ValueError('CATTYPE = {} is not a valid catalog.'.format(cat_type))
 	return cat
 
 
@@ -171,7 +171,7 @@ class ExpandedCatalog(object):
 		return self.__str__()
 
 	def __add__(self, catalog2):
-		raise AttributeError, 'Addition not implemented for Expanded Catalogs. Use "&".'
+		raise AttributeError('Addition not implemented for Expanded Catalogs. Use "&".')
 		return None
 
 	def __and__(self, catalog2):
@@ -227,7 +227,7 @@ class ExpandedCatalog(object):
 				format=formats.pd2fits(self.data[name]), array=self.data[name].to_numpy())
 			cols.append(c)
 		hdu = fits.BinTableHDU.from_columns(cols)
-		for line in hdu.header.items():
+		for line in list(hdu.header.items()):
 			if 'TFORM' in line[0]:
 				del hdu.header[line[0]]
 				hdu.header.append(line, end=True)
@@ -358,7 +358,7 @@ class CompressedCatalog(object):
 					format=formats.pd2fits(data[name]), array=data[name].to_numpy())
 				cols.append(c)
 			hdu = fits.BinTableHDU.from_columns(cols)
-			for line in hdu.header.items():
+			for line in list(hdu.header.items()):
 				if 'TFORM' in line[0]:
 					del hdu.header[line[0]]
 					hdu.header.append(line, end=True)
@@ -413,7 +413,7 @@ class Survey(object):
 			cat = CompressedCatalog(name=cls.name)
 
 			# Lenses data
-			src_per_lens = np.array( map(len, dd) )
+			src_per_lens = np.array( list(map(len, dd)) )
 			mask_nsrc = src_per_lens>0
 			cat_ids = [list(cls.data['CATID'].iloc[_]) for _ in ii]
 			dic ={'CATNAME': np.tile([cls.name], len(ii)),
@@ -443,7 +443,7 @@ class Survey(object):
 
 			# Append lens data to sources catalog
 			if append_data is not None:
-				src_per_lens = np.array( map(len, dd) )
+				src_per_lens = np.array( list(map(len, dd)) )
 				append_data = append_data.loc[append_data.index.repeat(src_per_lens)]
 				append_data.reset_index(drop=True, inplace=True)
 				cat.data = pd.concat([cat.data, append_data], axis=1)
