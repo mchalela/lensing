@@ -7,7 +7,6 @@ DES/
 SDSS/
 Extinction/
 redMapper_test/
-LensCat/grispy.py
 LensCat/read_cat_cut*
 DensModel/*zip
 gentools/*npz
