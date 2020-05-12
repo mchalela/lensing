@@ -185,9 +185,7 @@ class ExpandedCatalog(object):
 
 	@LensID.setter
 	def LensID(self, LensID):
-		colnames = [None] + list(self.data.columns)
-		if self.data.index.name is not None:
-			colnames += [self.data.index.name]
+		colnames = [self.data.index.name] + list(self.data.columns)
 		assert LensID in colnames, '{} is not a valid column name.'.format(LensID)
 		self._LensID = LensID
 		self.lenses = self.data[LensID].unique().shape[0]
@@ -309,9 +307,7 @@ class CompressedCatalog(object):
 
 	@LensID.setter
 	def LensID(self, LensID):
-		colnames = [None] + list(self.data_L.columns)
-		if self.data_L.index.name is not None:
-			colnames += [self.data_L.index.name]
+		colnames = [self.data_L.index.name] + list(self.data_L.columns)
 		assert LensID in colnames, '{} is not a valid column name.'.format(LensID)
 		self._LensID = LensID
 

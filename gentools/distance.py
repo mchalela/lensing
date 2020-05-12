@@ -143,7 +143,8 @@ def _precompute_lensing_distances(zl_max, zs_max, dz=0.0005, cosmo=None):
 
 #-----------------------------------------------------------------------
 # Recuperamos los datos
-def compute_lensing_distances(zl, zs, precomputed=False, dz=0.0005, cosmo=None):
+def compute_lensing_distances(zl=0., zs=0., dist=['DL','DS','DLS'], 
+    precomputed=False, dz=0.0005, cosmo=None):
     '''
     Compute lensing Angular diameter distances.
 
@@ -154,6 +155,9 @@ def compute_lensing_distances(zl, zs, precomputed=False, dz=0.0005, cosmo=None):
     precomputed : bool
         If False the true distances are computed. If False the distances
         will be interpolated from a precomputed file.
+    dist : list
+        List of distances to compute. Options: 'DL', 'DS' and 'DLS'.
+        The order is not relevant.
     dz : float
         step of the precomputed distances file. If precomputed is True,
         this value will be used to open the file:
@@ -163,16 +167,20 @@ def compute_lensing_distances(zl, zs, precomputed=False, dz=0.0005, cosmo=None):
 
     Returns
     -------
-    DL, DS, DLS : array, float
-        Angular diameter distances. DL: dist. to the lens, DS: dist. to
-        the source, DLS: dist. from lens to source. 
+    output : dict, array of floats
+        Dictionary with the distances computed according to the dist input param. 
+        The elements are the angular diameter distances. 'DL': dist. to the lens, 
+        'DS': dist. to the source, 'DLS': dist. from lens to source. 
     '''
+    output = {}
+
     if not precomputed:
         if not isinstance(cosmo, FLRW):
-            raise TypeError('cosmo is not an instance of astropy.cosmology.FLRW')           
-        DL  = cosmo.angular_diameter_distance(zl).value
-        DS  = cosmo.angular_diameter_distance(zs).value
-        DLS = cosmo.angular_diameter_distance_z1z2(zl, zs).value
+            raise TypeError('cosmo is not an instance of astropy.cosmology.FLRW')
+         
+        if 'DL' in dist: output['DL']  = cosmo.angular_diameter_distance(zl).value
+        if 'DS' in dist: output['DS']  = cosmo.angular_diameter_distance(zs).value
+        if 'DLS' in dist: output['DLS'] = cosmo.angular_diameter_distance_z1z2(zl, zs).value
 
     else:
         path = os.path.dirname(os.path.abspath(__file__))+'/'
@@ -189,13 +197,16 @@ def compute_lensing_distances(zl, zs, precomputed=False, dz=0.0005, cosmo=None):
         zl2_frac = (zl_idx+1 - zl_big)*Delta_z
         zs2_frac = (zs_idx+1 - zs_big)*Delta_z
         # Lineal interpolation for DL and DS
-        DL  = (H[0, zl_idx]*zl2_frac + H[0, zl_idx+1]*zl1_frac) / Delta_z
-        DS  = (H[0, zs_idx]*zs2_frac + H[0, zs_idx+1]*zs1_frac) / Delta_z
+        if 'DL' in dist:
+            output['DL'] = (H[0, zl_idx]*zl2_frac + H[0, zl_idx+1]*zl1_frac) / Delta_z
+        if 'DS' in dist: 
+            output['DS'] = (H[0, zs_idx]*zs2_frac + H[0, zs_idx+1]*zs1_frac) / Delta_z
         # Bilineal interpolation for DLS
-        A = H[zl_idx, zs_idx]*zl2_frac*zs2_frac
-        B = H[zl_idx+1, zs_idx]*zl1_frac*zs2_frac
-        C = H[zl_idx, zs_idx+1]*zl2_frac*zs1_frac
-        D = H[zl_idx+1, zs_idx+1]*zl1_frac*zs1_frac
-        DLS = (A + B + C + D) / Delta_z**2
+        if 'DLS' in dist: 
+            A = H[zl_idx, zs_idx]*zl2_frac*zs2_frac
+            B = H[zl_idx+1, zs_idx]*zl1_frac*zs2_frac
+            C = H[zl_idx, zs_idx+1]*zl2_frac*zs1_frac
+            D = H[zl_idx+1, zs_idx+1]*zl1_frac*zs1_frac
+            output['DLS'] = (A + B + C + D) / Delta_z**2
 
-    return [DL, DS, DLS]
+    return output

@@ -6,7 +6,8 @@ from astropy.stats import bootstrap
 from astropy.utils import NumpyRNGContext
 from astropy.cosmology import LambdaCDM
 
-from .. import gentools 
+from .. import gentools
+from ..LensCat import CompressedCatalog, ExpandedCatalog
 
 cosmo = LambdaCDM(H0=70, Om0=0.3, Ode0=0.7)
 cvel = 299792458. 	# Speed of light (m.s-1)
@@ -17,34 +18,39 @@ Msun = 1.989e30 	# Solar mass (kg)
 
 class Profile(object):
 
-	def __init__(self, cat=None, rin_hMpc=0.1, rout_hMpc=10., bins=10, space='log', boot_n=0, dz=0., cosmo=cosmo):
+	def __init__(self, cat=None, rin_hMpc=0.1, rout_hMpc=10., bins=10, space='log', boot_n=0, cosmo=cosmo,
+		back_dz=0., precompute_distances=True, reduce=True):
 		
-		if not isinstance(cat, LensCat.CompressedCatalog, LensCat.ExpandedCatalog):
+		if not isinstance(cat, CompressedCatalog, ExpandedCatalog):
 			raise TypeError('cat must be a LensCat catalog.')
 
+		self.cosmo = cosmo
+		self.boot_n = boot_n
+		self.reduce_flag = reduce
 		# Create bins...
 		self.set_bins(rin_hMpc=rin_hMpc, rout_hMpc=rout_hMpc, bins=bins, space=space)
 		nbin = len(self.bins)-1
 		self.r_hMpc = 0.5 * (self.bins[:-1] + self.bins[1:])
-		self.shear = np.zeros(nbin, dtype=float)
-		self.cero = np.zeros(nbin, dtype=float)
+
+		self._shear = np.zeros(nbin, dtype=float)
+		self._cero = np.zeros(nbin, dtype=float)
+		self._stat_error = np.zeros(nbin, dtype=float)
 		self.shear_error = np.zeros(nbin, dtype=float)
 		self.cero_error = np.zeros(nbin, dtype=float)
-		self.stat_error = np.zeros(nbin, dtype=float)
 		self.N = np.zeros(nbin, dtype=int)
 
-		if isinstance(cat, LensCat.ExpandedCatalog):
-			self._expanded_profile()
+		if isinstance(cat, ExpandedCatalog):
+			self._expanded_profile(data=cat.data)
 
-		elif isinstance(cat, LensCat.CompressedCatalog):
-			self._compressed_profile()
+		elif isinstance(cat, CompressedCatalog):
+			self._compressed_profile(data_L=cat.data_L, data_S=cat.data_S)
 
 		# Now in units of h*Msun/pc**2
-		self.shear /= cosmo.h
-		self.cero /= cosmo.h
-		self.shear_error /= cosmo.h
-		self.cero_error /= cosmo.h
-		self.stat_error /= cosmo.h
+		self.shear /= self.cosmo.h
+		self.cero /= self.cosmo.h
+		self.shear_error /= self.cosmo.h
+		self.cero_error /= self.cosmo.h
+		self.stat_error /= self.cosmo.h
 
 	def __getitem__(self, key):
 		return getattr(self, key)
@@ -63,29 +69,94 @@ class Profile(object):
 	def __repr__(self):
 		return str(self)
 
-	def _expanded_profile(self):
+	def _compute_distances(self, data):
+
+		cols = data.columns
+		# Check which distances are already computed in data
+		dist2compute = []
+		for col in ['DL', 'DS', 'DLS']:
+			if col not in cols: dist2compute.append(col)
+
+		# Compute only the distances that are not in data
+		if len(dist2compute) != 0:
+			D_dict = gentools.compute_lensing_distances(zl=data['Z'], zs=data['Z_B'],
+				dist=dist2compute, precomputed=True, cosmo=self.cosmo)
+		
+		# Return a dict with the three distance factors
+		for col in ['DL', 'DS', 'DLS']:
+			if col not in D_dict.keys(): D_dict[col] = data[col]
+		
+		return D_dict
+
+
+	def _profile_per_bin(self, i, my_dict):
+
+		mask = my_dict['digit']==i
+
+		m = my_dict['m'][mask]
+		weight = my_dict['weight'][mask]
+		et = my_dict['et'][mask]
+		ex = my_dict['ex'][mask]
+		sigma_critic = my_dict['sigma_critic'][mask]
+		
+		N_i = mask.sum()
+		if N_i==0: return
+		
+		w = weight/sigma_critic**2
+		
+		accum_w_i = np.sum(w) 
+		m_cal_num_i = np.sum(w*(1+m))
+		shear_i = np.sum(et*sigma_critic*w)
+		cero_i = np.sum(ex*sigma_critic*w)
+		stat_error_num_i = np.sum( (0.25*w*sigma_critic)**2 )
+
+		return shear_i, cero_i, accum_w_i, m_cal_num_i, stat_error_num_i, N_i
+
+		#if self.boot_n>0:
+		#	err_t, err_x = self._boot_error(et*sigma_critic, ex*sigma_critic, w, self.boot_n)
+		#	self.shear_error[i] = err_t  / m_cal[i]
+		#	self.cero_error[i] = err_x / m_cal[i]
+
+	def reduce(self):
+
+		shear, cero, accum_w, m_cal_num, stat_error_num, N = self._profile
+
+		self.m_cal = m_cal_num / accum_w
+		self.shear = (shear/accum_w) / m_cal
+		self.cero = (cero / accum_w) / m_cal
+		self.stat_error = (stat_error_num/accum_w**2) / m_cal
+		self.N = N
+
+	def _expanded_profile(self, data):
 		''' Computes profile for ExpandedCatalog
 		'''
-		data = data.to_records()
-
-		# Define some parameters...
-		if 'DLS' not in data.column:
-			pass
-		Mpc_scale = self.set_Mpc_scale(dl=data['DL'])
-		sigma_critic = self.set_sigma_critic(dl=data['DL'], ds=data['DS'], dls=data['DLS'])
+		cols = data.columns
+		
+		DD = self._compute_distances(data)
+		
+		Mpc_scale = self.set_Mpc_scale(dl=DD['DL'])
+		sigma_critic = self.set_sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS'])
 
 		# Compute distance and ellipticity components...
 		dist, theta = gentools.sphere_angular_vector(data['RAJ2000'], data['DECJ2000'],
 													data['RA'], data['DEC'], units='deg')
 		theta += 90. 
-		dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # distance to the lens in Mpc/h
+		dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # radial distance to the lens centre in Mpc/h
 		et, ex = gentools.polar_rotation(data['e1'], data['e2'], np.deg2rad(theta))
 
 		digit = np.digitize(dist_hMpc, bins=self.bins)-1
-		m_cal = np.ones(nbin, float)
-	
+			
+		my_dict = {'m': data['m'], 'w': data['weight'],
+					'digit': digit, 'sigma_cirtic': sigma_cirtic,
+					'et': et, 'ex': ex}
+		self._profile = self._profile_per_bin(i, my_dict)
+
+		if self.reduce_flag:
+			self.reduce()
+		'''
 		for i in range(nbin):
 			mask = digit==i
+			
 			self.N[i] = mask.sum()
 			if self.N[i]==0: continue
 			weight = data['weight'][mask]/sigma_critic[mask]**2
@@ -104,8 +175,9 @@ class Profile(object):
 												weight, boot_n)
 				self.shear_error[i] = err_t  / m_cal[i]
 				self.cero_error[i] = err_x / m_cal[i]
+		'''
 
-	def _compressed_profile(self):
+	def _compressed_profile(self, data_L, data_S):
 		pass
 
 	def set_Mpc_scale(self, dl):
