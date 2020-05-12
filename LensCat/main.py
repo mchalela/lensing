@@ -95,7 +95,7 @@ def call_gripsy(data):
 	N_cells = 50
 	periodic = {0: (0,360)}
 	pos = data[['RAJ2000', 'DECJ2000']].to_numpy()
-	gsp = GriSPy(pos, N_cells=N_cells, periodic=periodic, metric='sphere')
+	gsp = GriSPy(pos, N_cells=N_cells, periodic=periodic, metric='vincenty')
 	return gsp
 
 class formats:
@@ -200,7 +200,7 @@ class ExpandedCatalog(object):
 		if newdata is not None:
 			self._data = newdata
 			self.sources = newdata.shape[0]
-			self.lenses = self.data[LensID].unique().shape[0]
+			self.lenses = self.data[self.LensID].unique().shape[0]
 
 
 	def add_column(self, index=0, name=None, data=None):
@@ -403,14 +403,14 @@ class Survey(object):
 
 		# Search for sources
 		if lower_radii is None:
-			dd, ii = cls.gsp.bubble_neighbors(centre, distance_upper_bound=upper_radii, njobs=njobs)
+			dd, ii = cls.gsp.bubble_neighbors(centre, distance_upper_bound=upper_radii)
 		else: 
 			dd, ii = cls.gsp.shell_neighbors(centre, distance_upper_bound=upper_radii, 
-						distance_lower_bound=lower_radii, njobs=njobs)
+						distance_lower_bound=lower_radii)
 
 		if cls.compressed:
 			# One catalog, two data frames, one for galaxies and one for groups
-			cat = CompressedCatalog(name=cls.name)
+			cat = CompressedCatalog(name=cls.name, LensID='ID')
 
 			# Lenses data
 			src_per_lens = np.array( list(map(len, dd)) )
@@ -437,7 +437,7 @@ class Survey(object):
 
 		else:
 			# One catalog with repeated galaxies	
-			cat = ExpandedCatalog(name=cls.name)
+			cat = ExpandedCatalog(name=cls.name, LensID='ID')
 			ii = list(itertools.chain.from_iterable(ii))
 			cat.data = cls.data.iloc[ii].reset_index(drop=True)
 
