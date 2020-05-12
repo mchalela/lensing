@@ -435,7 +435,9 @@ class Survey(object):
 			# One catalog with repeated galaxies	
 			cat = ExpandedCatalog(name=cls.name, LensID='ID')
 			ii = list(itertools.chain.from_iterable(ii))
-			cat.data = cls.data.iloc[ii].reset_index(drop=True)
+			print(cat.data.index)
+			print(cat.data.columns)
+			cat.data = cls.data.iloc[ii].reset_index(drop=False)
 
 			# Append lens data to sources catalog
 			if append_data is not None:
