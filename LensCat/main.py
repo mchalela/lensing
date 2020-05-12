@@ -155,14 +155,17 @@ class ExpandedCatalog(object):
 		self.name = name
 		self._LensID = LensID
 		self._data = data
-		self.lenses = 0
 		self.sources = 0 if data is None else data.shape[0]
+		if (LensID is not None) and (data is not None):
+			self.lenses = data[LensID].unique().shape[0]
+		else:
+			self.lenses = 0
 
 	def __str__(self):
 		output = '<Expanded Catalog>\n'
 		output += 'Name: {0}\n'.format(self.name)
 		output += 'LensID: {0}\n'.format(self.LensID)
-		output += 'Lenses: {0}\n'.format(self.sources)
+		output += 'Lenses: {0}\n'.format(self.lenses)
 		output += 'Sources: {0}\n'.format(self.sources)
 		output += 'Columns: {0}\n'.format(list(self.data.columns))
 		return output
@@ -435,9 +438,7 @@ class Survey(object):
 			# One catalog with repeated galaxies	
 			cat = ExpandedCatalog(name=cls.name, LensID='ID')
 			ii = list(itertools.chain.from_iterable(ii))
-			print(cat.data.index)
-			print(cat.data.columns)
-			cat.data = cls.data.iloc[ii].reset_index(drop=False)
+			cat._data = cls.data.iloc[ii].reset_index(drop=True)
 
 			# Append lens data to sources catalog
 			if append_data is not None:
