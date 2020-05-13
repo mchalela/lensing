@@ -23,9 +23,9 @@ def deg2Mpc(R_deg, z, cosmo=cosmo):
 	R_Mpc = R_deg*3600.*MpcScale
 	return R_Mpc
 
-def SigmaCritic(dl, ds, dls):
+def sigma_critic(dl, ds, dls):
 	beta = dls/ds
-	sigma_critic = cvel**2/(4.*np.pi*G*(dl*1e6*pc)) * (1./beta) * (pc**2/Msun)
+	SigmaCritic = cvel**2/(4.*np.pi*G*(dl*1e6*pc)) * (1./beta) * (pc**2/Msun)
 	#beta_mean = beta.mean()
-	#sigma_critic_mean = sigma_critic.mean()
-	return sigma_critic
+	#sigma_critic_mean = SigmaCritic.mean()
+	return SigmaCritic
