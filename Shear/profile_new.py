@@ -51,12 +51,14 @@ def _profile_per_lens(j, dict_per_lens):
 
 	data_L = dict_per_lens['data_L']
 	data_S = dict_per_lens['data_S']
+	bins = dict_per_lens['bins']
+	#cosmo = dict_per_lens['cosmo']
 
 	dL = data_L.iloc[j]
 	dS = data_S.loc[dL['CATID']]
 
 	DD = gentools.compute_lensing_distances(zl=dL['Z'], zs=dS['Z_B'],
-		dist=['DL', 'DS', 'DLS'], precomputed=True, cosmo=self.cosmo)
+		dist=['DL', 'DS', 'DLS'], precomputed=True)#, cosmo=self.cosmo)
 
 	Mpc_scale = gentools.Mpc_scale(dl=DD['DL'])
 	sigma_critic = gentools.sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS'])
@@ -68,9 +70,9 @@ def _profile_per_lens(j, dict_per_lens):
 	dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # radial distance to the lens centre in Mpc/h
 	et, ex = gentools.polar_rotation(dS['e1'], dS['e2'], np.deg2rad(theta))
 
-	digit = np.digitize(dist_hMpc, bins=self.bins)-1
+	digit = np.digitize(dist_hMpc, bins=bins)-1
 		
-	dict_per_bin = {'m': data['m'], 'weight': data['weight'],
+	dict_per_bin = {'m': dS['m'], 'weight': dS['weight'],
 				'digit': digit, 'sigma_critic': sigma_critic,
 				'et': et, 'ex': ex}
 
@@ -78,8 +80,9 @@ def _profile_per_lens(j, dict_per_lens):
 	accum_w_j, m_cal_num_j = [], []
 	stat_error_num_j, N_j = [], []
 
-	for i in range(self.nbin):
+	for i in range(len(bins)):
 		pf = _profile_per_bin(i, dict_per_bin)
+		print(pf)
 		shear_j += [pf[i][0]]
 		cero_j += [pf[i][1]]
 		accum_w_j += [pf[i][2]]
@@ -106,9 +109,11 @@ class ExpandedProfile(object):
 		self.boot_n = boot_n
 		self.reduce_flag = reduce
 		self.njobs = njobs
-		# Create bins...
-		self.set_bins(rin_hMpc=rin_hMpc, rout_hMpc=rout_hMpc, bins=bins, space=space)
+
+		self.bins = gentools.make_bins(rin=rin_hMpc, rout=rout_hMpc, bins=bins, space=space)
 		self.nbin = len(self.bins)-1
+		self.rin_hMpc  = self.bins[0]
+		self.rout_hMpc = self.bins[-1]
 		self.r_hMpc = 0.5 * (self.bins[:-1] + self.bins[1:])
 
 		self.shear_error = np.zeros(self.nbin, dtype=float)
@@ -186,17 +191,6 @@ class ExpandedProfile(object):
 
 		self._reduce(pf)
 
-	def set_bins(self, rin_hMpc, rout_hMpc, bins, space):
-		if isinstance(bins, int):
-			if space=='log':
-				self.bins = np.geomspace(rin_hMpc, rout_hMpc, bins+1)
-			else:
-				self.bins = np.linspace(rin_hMpc, rout_hMpc, bins+1)
-		else:
-			self.bins = bins
-		self.rin_hMpc  = self.bins[0]
-		self.rout_hMpc = self.bins[-1]
-		return None
 
 	def _boot_error(self, shear, cero, weight, nboot):
 		index=np.arange(len(shear))
@@ -280,15 +274,19 @@ class CompressedProfile(object):
 		self.boot_n = boot_n
 		self.reduce_flag = reduce
 		self.njobs = njobs
-		# Create bins...
-		self.set_bins(rin_hMpc=rin_hMpc, rout_hMpc=rout_hMpc, bins=bins, space=space)
+
+		self.bins = gentools.make_bins(rin=rin_hMpc, rout=rout_hMpc, bins=bins, space=space)
 		self.nbin = len(self.bins)-1
+		self.rin_hMpc  = self.bins[0]
+		self.rout_hMpc = self.bins[-1]
 		self.r_hMpc = 0.5 * (self.bins[:-1] + self.bins[1:])
 
 		self.shear_error = np.zeros(self.nbin, dtype=float)
 		self.cero_error = np.zeros(self.nbin, dtype=float)
 
-		self._profile(data_L=cat.data_L, data_S=cat.data_S)
+		if data_S.index.name is not 'CATID':
+			data_S_indexed = data_S.set_index('CATID')
+		self._profile(data_L=data_L, data_S=data_S_indexed)
 
 		'''
 		# Now in units of h*Msun/pc**2
@@ -334,10 +332,7 @@ class CompressedProfile(object):
 	def _profile(self, data_L, data_S):
 		''' Computes profile for CompressedCatalog
 		'''
-
-		# Inicializar arreglos... para que quede un perfil por grupo
-		#m_cal = np.ones(nbin, float)
-		#shear = np.
+		dict_per_lens = {'data_L': data_L, 'data_S': data_S, 'bins': self.bins}
 
 		# Calcular perfiles por grupos
 		print('GO!!')
@@ -348,18 +343,6 @@ class CompressedProfile(object):
 		# Reducir
 		self._reduce(pf)
 		
-	def set_bins(self, rin_hMpc, rout_hMpc, bins, space):
-		if isinstance(bins, int):
-			if space=='log':
-				self.bins = np.geomspace(rin_hMpc, rout_hMpc, bins+1)
-			else:
-				self.bins = np.linspace(rin_hMpc, rout_hMpc, bins+1)
-		else:
-			self.bins = bins
-		self.rin_hMpc  = self.bins[0]
-		self.rout_hMpc = self.bins[-1]
-		return None
-
 	def _boot_error(self, shear, cero, weight, nboot):
 		index=np.arange(len(shear))
 		with NumpyRNGContext(seed=1):
