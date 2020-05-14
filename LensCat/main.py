@@ -432,6 +432,8 @@ class Survey(object):
 				'MULTIPLICITY': im})
 			iu_data = cls.data.iloc[iu].reset_index(drop=True)
 			cat.data_S = pd.concat([iu_data, extra_data], axis=1).reset_index(drop=True)
+			# CHANGE Z_B PRECISION TO DOUBLE
+			cat.data_S['Z_B'] = cat.data_S['Z_B'].astype(np.float64)
 			return cat
 
 		else:
@@ -439,6 +441,8 @@ class Survey(object):
 			cat = ExpandedCatalog(name=cls.name, LensID='ID')
 			ii = list(itertools.chain.from_iterable(ii))
 			cat._data = cls.data.iloc[ii].reset_index(drop=True)
+			# CHANGE Z_B PRECISION TO DOUBLE
+			cat.data['Z_B'] = cat.data['Z_B'].astype(np.float64)
 
 			# Append lens data to sources catalog
 			if append_data is not None:
