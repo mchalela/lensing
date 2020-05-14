@@ -29,7 +29,7 @@ def _profile_per_bin(i, dict_per_bin):
 	sigma_critic = dict_per_bin['sigma_critic'][mask]
 	
 	N_i = mask.sum()
-	if N_i==0: return
+	if N_i==0: return [0.0]*6
 	
 	w = weight/sigma_critic**2
 	
@@ -48,7 +48,7 @@ def _profile_per_bin(i, dict_per_bin):
 
 
 def _profile_per_lens(j, dict_per_lens):
-
+	print(j)
 	data_L = dict_per_lens['data_L']
 	data_S = dict_per_lens['data_S']
 	bins = dict_per_lens['bins']
@@ -82,13 +82,12 @@ def _profile_per_lens(j, dict_per_lens):
 
 	for i in range(len(bins)):
 		pf = _profile_per_bin(i, dict_per_bin)
-		print(pf)
-		shear_j += [pf[i][0]]
-		cero_j += [pf[i][1]]
-		accum_w_j += [pf[i][2]]
-		m_cal_num_j += [pf[i][3]]
-		stat_error_num_j += [pf[i][4]]
-		N_j += [pf[i][5]]
+		shear_j += [pf[0]]
+		cero_j += [pf[1]]
+		accum_w_j += [pf[2]]
+		m_cal_num_j += [pf[3]]
+		stat_error_num_j += [pf[4]]
+		N_j += [pf[5]]
 
 	shear_j, cero_j = np.array(shear_j), np.array(cero_j)
 	accum_w_j, m_cal_num_j = np.array(accum_w_j), np.array(m_cal_num_j)
@@ -314,7 +313,7 @@ class CompressedProfile(object):
 	def __repr__(self):
 		return str(self)
 
-	def reduce(self, pf):
+	def _reduce(self, pf):
 
 		shear = np.sum( [pf[_][0] for _ in range(len(pf))] )
 		cero = np.sum( [pf[_][1] for _ in range(len(pf))] )

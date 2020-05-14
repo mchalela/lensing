@@ -143,8 +143,9 @@ def _precompute_lensing_distances(zl_max, zs_max, dz=0.0005, cosmo=None):
 
 #-----------------------------------------------------------------------
 # Recuperamos los datos
+CACHE_H = None
 def compute_lensing_distances(zl=0., zs=0., dist=['DL','DS','DLS'], 
-    precomputed=False, dz=0.0005, cosmo=None):
+    precomputed=False, dz=0.0005, cosmo=None, cache=False):
     '''
     Compute lensing Angular diameter distances.
 
@@ -172,6 +173,7 @@ def compute_lensing_distances(zl=0., zs=0., dist=['DL','DS','DLS'],
         The elements are the angular diameter distances. 'DL': dist. to the lens, 
         'DS': dist. to the source, 'DLS': dist. from lens to source. 
     '''
+    global CACHE_H
     output = {}
 
     if not precomputed:
@@ -181,32 +183,41 @@ def compute_lensing_distances(zl=0., zs=0., dist=['DL','DS','DLS'],
         if 'DL' in dist: output['DL']  = cosmo.angular_diameter_distance(zl).value
         if 'DS' in dist: output['DS']  = cosmo.angular_diameter_distance(zs).value
         if 'DLS' in dist: output['DLS'] = cosmo.angular_diameter_distance_z1z2(zl, zs).value
+        return output
+    
 
+    path = os.path.dirname(os.path.abspath(__file__))+'/'
+    filename = path+'PrecomputedDistances_dz_{}.npz'.format(dz)
+    if cache:
+        if CACHE_H is None:
+            H = scipy.sparse.load_npz(filename).todense()
+            CACHE_H = np.asarray(H)
+        H = CACHE_H
     else:
-        path = os.path.dirname(os.path.abspath(__file__))+'/'
-        H = scipy.sparse.load_npz(path+'PrecomputedDistances_dz_{}.npz'.format(dz)).todense()
+        H = scipy.sparse.load_npz(filename).todense()
         H = np.asarray(H)
-        Delta_z = dz
-        zl_big = zl/Delta_z
-        zs_big = zs/Delta_z
-        zl_idx = zl_big.astype(np.int32)
-        zs_idx = zs_big.astype(np.int32)
 
-        zl1_frac = (zl_big - zl_idx)*Delta_z
-        zs1_frac = (zs_big - zs_idx)*Delta_z
-        zl2_frac = (zl_idx+1 - zl_big)*Delta_z
-        zs2_frac = (zs_idx+1 - zs_big)*Delta_z
-        # Lineal interpolation for DL and DS
-        if 'DL' in dist:
-            output['DL'] = (H[0, zl_idx]*zl2_frac + H[0, zl_idx+1]*zl1_frac) / Delta_z
-        if 'DS' in dist: 
-            output['DS'] = (H[0, zs_idx]*zs2_frac + H[0, zs_idx+1]*zs1_frac) / Delta_z
-        # Bilineal interpolation for DLS
-        if 'DLS' in dist: 
-            A = H[zl_idx, zs_idx]*zl2_frac*zs2_frac
-            B = H[zl_idx+1, zs_idx]*zl1_frac*zs2_frac
-            C = H[zl_idx, zs_idx+1]*zl2_frac*zs1_frac
-            D = H[zl_idx+1, zs_idx+1]*zl1_frac*zs1_frac
-            output['DLS'] = (A + B + C + D) / Delta_z**2
+    Delta_z = dz
+    zl_big = zl/Delta_z
+    zs_big = zs/Delta_z
+    zl_idx = zl_big.astype(np.int32)
+    zs_idx = zs_big.astype(np.int32)
+
+    zl1_frac = (zl_big - zl_idx)*Delta_z
+    zs1_frac = (zs_big - zs_idx)*Delta_z
+    zl2_frac = (zl_idx+1 - zl_big)*Delta_z
+    zs2_frac = (zs_idx+1 - zs_big)*Delta_z
+    # Lineal interpolation for DL and DS
+    if 'DL' in dist:
+        output['DL'] = (H[0, zl_idx]*zl2_frac + H[0, zl_idx+1]*zl1_frac) / Delta_z
+    if 'DS' in dist: 
+        output['DS'] = (H[0, zs_idx]*zs2_frac + H[0, zs_idx+1]*zs1_frac) / Delta_z
+    # Bilineal interpolation for DLS
+    if 'DLS' in dist: 
+        A = H[zl_idx, zs_idx]*zl2_frac*zs2_frac
+        B = H[zl_idx+1, zs_idx]*zl1_frac*zs2_frac
+        C = H[zl_idx, zs_idx+1]*zl2_frac*zs1_frac
+        D = H[zl_idx+1, zs_idx+1]*zl1_frac*zs1_frac
+        output['DLS'] = (A + B + C + D) / Delta_z**2
 
     return output
