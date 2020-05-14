@@ -33,9 +33,9 @@ def sigma_critic(dl, ds, dls):
 def make_bins(rin, rout, bins, space):
 	if isinstance(bins, int):
 		if space=='log':
-			bins = np.geomspace(rin_hMpc, rout_hMpc, bins+1)
+			bins = np.geomspace(rin, rout, bins+1)
 		else:
-			bins = np.linspace(rin_hMpc, rout_hMpc, bins+1)
+			bins = np.linspace(rin, rout, bins+1)
 	return bins
 
 # General tools for the lensing module
