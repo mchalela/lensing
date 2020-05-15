@@ -3,6 +3,7 @@ import numpy as np
 import scipy.sparse
 from astropy.cosmology import FLRW
 
+
 def sphere_angular_separation(lon1, lat1, lon2, lat2):
     '''
     Angular separation between two points on a sphere
@@ -39,8 +40,6 @@ def sphere_angular_separation(lon1, lat1, lon2, lat2):
     sep = np.arctan2(np.sqrt(num1 ** 2 + num2 ** 2), denominator)
     return sep
 
-
-
 def sphere_angular_vector(ra, dec, ra_center, dec_center, units='rad'): 
     '''
     Angular separation and orientation between two points on a sphere.
@@ -59,8 +58,7 @@ def sphere_angular_vector(ra, dec, ra_center, dec_center, units='rad'):
         Polar vector on the sphere in units defined by 'units'.
     '''
     if units not in ['rad', 'deg']:
-        raise ValueError('Argument units="{}" not recognized. '
-            'Options are: "rad", "deg".'.format(units))
+        raise ValueError('Argument units not recognized. Options are: "rad", "deg".')
         
     if units == 'deg':
         ra, dec = np.deg2rad(ra), np.deg2rad(dec)
@@ -144,7 +142,7 @@ def _precompute_lensing_distances(zl_max, zs_max, dz=0.0005, cosmo=None):
 #-----------------------------------------------------------------------
 # Recuperamos los datos
 CACHE_H = None
-def compute_lensing_distances(zl=0., zs=0., dist=['DL','DS','DLS'], 
+def compute_lensing_distances(zl=0., zs=0., 
     precomputed=False, dz=0.0005, cosmo=None, cache=False):
     '''
     Compute lensing Angular diameter distances.
@@ -180,9 +178,9 @@ def compute_lensing_distances(zl=0., zs=0., dist=['DL','DS','DLS'],
         if not isinstance(cosmo, FLRW):
             raise TypeError('cosmo is not an instance of astropy.cosmology.FLRW')
          
-        if 'DL' in dist: output['DL']  = cosmo.angular_diameter_distance(zl).value
-        if 'DS' in dist: output['DS']  = cosmo.angular_diameter_distance(zs).value
-        if 'DLS' in dist: output['DLS'] = cosmo.angular_diameter_distance_z1z2(zl, zs).value
+        output['DL']  = cosmo.angular_diameter_distance(zl).value
+        output['DS']  = cosmo.angular_diameter_distance(zs).value
+        output['DLS'] = cosmo.angular_diameter_distance_z1z2(zl, zs).value
         return output
     
 
@@ -208,16 +206,14 @@ def compute_lensing_distances(zl=0., zs=0., dist=['DL','DS','DLS'],
     zl2_frac = (zl_idx+1 - zl_big)*Delta_z
     zs2_frac = (zs_idx+1 - zs_big)*Delta_z
     # Lineal interpolation for DL and DS
-    if 'DL' in dist:
-        output['DL'] = (H[0, zl_idx]*zl2_frac + H[0, zl_idx+1]*zl1_frac) / Delta_z
-    if 'DS' in dist: 
-        output['DS'] = (H[0, zs_idx]*zs2_frac + H[0, zs_idx+1]*zs1_frac) / Delta_z
+    DL = (H[0, zl_idx]*zl2_frac + H[0, zl_idx+1]*zl1_frac) / Delta_z
+    DS = (H[0, zs_idx]*zs2_frac + H[0, zs_idx+1]*zs1_frac) / Delta_z
     # Bilineal interpolation for DLS
-    if 'DLS' in dist: 
-        A = H[zl_idx, zs_idx]*zl2_frac*zs2_frac
-        B = H[zl_idx+1, zs_idx]*zl1_frac*zs2_frac
-        C = H[zl_idx, zs_idx+1]*zl2_frac*zs1_frac
-        D = H[zl_idx+1, zs_idx+1]*zl1_frac*zs1_frac
-        output['DLS'] = (A + B + C + D) / Delta_z**2
+    A = H[zl_idx, zs_idx]*zl2_frac*zs2_frac
+    B = H[zl_idx+1, zs_idx]*zl1_frac*zs2_frac
+    C = H[zl_idx, zs_idx+1]*zl2_frac*zs1_frac
+    D = H[zl_idx+1, zs_idx+1]*zl1_frac*zs1_frac
+    DLS = (A + B + C + D) / Delta_z**2
 
+    output = {'DL': DL, 'DS': DS, 'DLS': DLS} 
     return output
