@@ -77,7 +77,7 @@ def _profile_per_lens(j, dict_per_lens):
 	dS = dS[mask_dz]
 
 	DD = gentools.compute_lensing_distances(zl=dL['Z'], zs=dS['Z_B'].values,
-		dist=['DL', 'DS', 'DLS'], precomputed=True, cache=True)#, cosmo=self.cosmo)
+		precomputed=True, cache=True)#, cosmo=self.cosmo)
 
 	Mpc_scale = gentools.Mpc_scale(dl=DD['DL'])
 	sigma_critic = gentools.sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS'])
@@ -258,7 +258,7 @@ class ExpandedProfile(Profile):
 		data = data[mask_dz]
 
 		DD = gentools.compute_lensing_distances(zl=data['Z'], zs=data['Z_B'],
-				dist=['DL', 'DS', 'DLS'], precomputed=True, cosmo=self.cosmo)
+			precomputed=True, cosmo=self.cosmo)
 		
 		Mpc_scale = gentools.Mpc_scale(dl=DD['DL'])
 		sigma_critic = gentools.sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS'])
