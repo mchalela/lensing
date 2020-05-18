@@ -1,4 +1,6 @@
 import numpy as np
+from functools import wraps
+from datetime import datetime
 from astropy.cosmology import LambdaCDM
 cosmo = LambdaCDM(H0=70, Om0=0.3, Ode0=0.7)
 
@@ -43,3 +45,25 @@ class classonly(classmethod):
     def __get__(self, obj, type):
         if obj: raise AttributeError
         return super(classonly, self).__get__(obj, type)
+
+def seconds2str(dt):
+	'''Convert seconds to a printable format'''
+    h, m, s = int(dt//3600), int((dt%3600) // 60), dt % 60
+    dt = f'{s:.3f}s'
+    if h != 0: 
+    	dt = f'{h:02d}h{m:02d}m' + dt
+    elif m !=0:
+    	dt = f'{m:02d}m' + dt
+    return dt	
+
+def timer(method):
+	'''Decorator to time a function runtime'''
+    @wraps(method)
+    def wrapper(*args, **kwargs):
+        t0 = time.time()
+        output = method(*args, **kwargs)
+        dt = time.time() - t0
+        dt = seconds2str(dt)
+        print('<{} finished in {}>'.format(method.__name__, dt))
+        return output
+    return wrapper
