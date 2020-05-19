@@ -32,13 +32,18 @@ def sigma_critic(dl, ds, dls):
 	#sigma_critic_mean = SigmaCritic.mean()
 	return SigmaCritic
 
-def make_bins(rin, rout, bins, space):
-	if isinstance(bins, int):
-		if space=='log':
-			bins = np.geomspace(rin, rout, bins+1)
-		else:
-			bins = np.linspace(rin, rout, bins+1)
+def make_bins(rin, rout, nbins, space):	
+	if space=='log':
+		bins = np.geomspace(rin, rout, nbins+1)
+	else:
+		bins = np.linspace(rin, rout, nbins+1)
 	return bins
+
+def digitize(data, bins):
+    """Return data bin index."""
+    N = len(bins) - 1
+    digit = (N * (data - bins[0]) / (bins[-1] - bins[0])).astype(np.int)
+    return digit
 
 # General tools for the lensing module
 class classonly(classmethod):
@@ -49,6 +54,15 @@ class classonly(classmethod):
 def seconds2str(dt):
     '''Convert seconds to a printable format'''
     h, m, s = int(dt//3600), int((dt%3600) // 60), dt % 60
+
+    if s > 60.:
+    	dt = f'{s:.1f}s'
+    elif s > 1.:
+    	dt = f'{s:.2f}s'
+    else:
+    	ms = s/1000.	# miliseconds
+    	dt = f'{ms:.2f}ms'
+
     dt = f'{s:.3f}s'
     if h != 0: 
         dt = f'{h:02d}h{m:02d}m' + dt

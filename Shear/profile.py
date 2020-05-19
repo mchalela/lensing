@@ -2,8 +2,6 @@ import os, platform
 import datetime
 import numpy as np
 import pandas as pd
-from astropy.stats import bootstrap
-from astropy.utils import NumpyRNGContext
 from astropy.cosmology import LambdaCDM
 from joblib import Parallel, delayed
 
@@ -136,7 +134,7 @@ def read_profile(self, file, colnames=True):
 
 class Profile(object):
 
-	def __init__(self, rin_hMpc=0.1, rout_hMpc=10., bins=10, space='log',
+	def __init__(self, rin_hMpc=0.1, rout_hMpc=10., nbins=10, space='log',
 		nboot=0, cosmo=cosmo, back_dz=0., precompute_distances=True, njobs=1):
 		
 		#if not isinstance(cat, ExpandedCatalog):
@@ -147,11 +145,10 @@ class Profile(object):
 		self.njobs = njobs
 		self.back_dz = back_dz
 
-		self.bins = gentools.make_bins(rin=rin_hMpc, rout=rout_hMpc, bins=bins, space=space)
-		self.nbin = len(self.bins)-1
+		self.bins = gentools.make_bins(rin_hMpc, rout_hMpc, nbins=bins, space=space)
+		self.nbins = nbins
 		self.rin_hMpc  = self.bins[0]
 		self.rout_hMpc = self.bins[-1]
-		self.r_hMpc = 0.5 * (self.bins[:-1] + self.bins[1:])	
 
 
 	def __getitem__(self, key):
@@ -209,10 +206,10 @@ class Profile(object):
 @gentools.timer
 class ExpandedProfile(Profile):
 
-	def __init__(self, data=None, rin_hMpc=0.1, rout_hMpc=10., bins=10, space='log', 
+	def __init__(self, data=None, rin_hMpc=0.1, rout_hMpc=10., nbins=10, space='log', 
 		nboot=0, cosmo=cosmo, back_dz=0., precompute_distances=True, njobs=1):
 		
-		super().__init__(rin_hMpc, rout_hMpc, bins, space, 
+		super().__init__(rin_hMpc, rout_hMpc, nbins, space, 
 							nboot, cosmo, back_dz, precompute_distances, njobs)
 
 		pf = self._profile(data=data)
@@ -224,31 +221,9 @@ class ExpandedProfile(Profile):
 		self.shear_error = pf['shear_error']/self.cosmo.h
 		self.cero_error = pf['cero_error']/self.cosmo.h
 		self.stat_error = pf['stat_error']/self.cosmo.h
+		self.r_hMpc = 0.5 * (self.bins[:-1] + self.bins[1:])
 		self.N = pf['N'].astype(np.int32)
 
-	def _reduce(self, pf):
-
-		shear = np.array( [pf[_]['shear_i'] for _ in range(len(pf))] ).T
-		cero = np.array( [pf[_]['cero_i'] for _ in range(len(pf))] ).T
-		accum_w = np.array( [pf[_]['accum_w_i'] for _ in range(len(pf))] ).T
-		m_cal_num = np.array( [pf[_]['m_cal_num_i'] for _ in range(len(pf))] ).T
-		stat_error_num = np.array( [pf[_]['stat_error_num_i'] for _ in range(len(pf))] ).T
-		N = np.array( [pf[_]['N_i'] for _ in range(len(pf))] )
-
-		m_cal = m_cal_num / accum_w
-		shear = (shear/accum_w) / m_cal
-		cero = (cero/accum_w) / m_cal
-		stat_error = np.sqrt(stat_error_num/accum_w**2) / m_cal
-
-		x = {}
-		x['shear'] = shear[0, :]
-		x['cero'] = cero[0, :]
-		x['stat_error'] = stat_error[0, :]
-		x['shear_error'] = np.std(shear[1:,:], axis=0)
-		x['cero_error'] = np.std(cero[1:,:], axis=0)
-		x['N'] = N.astype(np.int32)
-
-		return x
 
 	def _profile(self, data):
 		''' Computes profile for ExpandedCatalog
@@ -281,21 +256,42 @@ class ExpandedProfile(Profile):
 
 		with Parallel(n_jobs=self.njobs) as parallel:
 			delayed_fun = delayed(_profile_per_bin)
-			pf = parallel(delayed_fun(i, dict_per_bin) for i in range(self.nbin))
-
+			pf = parallel(delayed_fun(i, dict_per_bin) for i in range(self.nbins))
 		return pf
 
+	def _reduce(self, pf):
+
+		shear = np.array( [pf[_]['shear_i'] for _ in range(len(pf))] ).T
+		cero = np.array( [pf[_]['cero_i'] for _ in range(len(pf))] ).T
+		accum_w = np.array( [pf[_]['accum_w_i'] for _ in range(len(pf))] ).T
+		m_cal_num = np.array( [pf[_]['m_cal_num_i'] for _ in range(len(pf))] ).T
+		stat_error_num = np.array( [pf[_]['stat_error_num_i'] for _ in range(len(pf))] ).T
+		N = np.array( [pf[_]['N_i'] for _ in range(len(pf))] )
+
+		m_cal = m_cal_num / accum_w
+		shear = (shear/accum_w) / m_cal
+		cero = (cero/accum_w) / m_cal
+		stat_error = np.sqrt(stat_error_num/accum_w**2) / m_cal
+
+		x = {}
+		x['shear'] = shear[0, :]
+		x['cero'] = cero[0, :]
+		x['stat_error'] = stat_error[0, :]
+		x['shear_error'] = np.std(shear[1:,:], axis=0)
+		x['cero_error'] = np.std(cero[1:,:], axis=0)
+		x['N'] = N.astype(np.int32)
+		return x
 
 @gentools.timer
 class CompressedProfile(Profile):
 
-	def __init__(self, data_L, data_S, rin_hMpc=0.1, rout_hMpc=10., bins=10, space='log',
+	def __init__(self, data_L, data_S, rin_hMpc=0.1, rout_hMpc=10., nbins=10, space='log',
 		nboot=0, cosmo=cosmo, back_dz=0., precompute_distances=True, njobs=1):
 		
 		#if not isinstance(cat, (CompressedCatalog, ExpandedCatalog)):
 		#	raise TypeError('cat must be a LensCat catalog.')
 
-		super().__init__(rin_hMpc, rout_hMpc, bins, space, 
+		super().__init__(rin_hMpc, rout_hMpc, nbins, space, 
 							nboot, cosmo, back_dz, precompute_distances, njobs)
 
 		if data_S.index.name is not 'CATID':
@@ -309,8 +305,20 @@ class CompressedProfile(Profile):
 		self.shear_error = pf['shear_error']/self.cosmo.h
 		self.cero_error = pf['cero_error']/self.cosmo.h
 		self.stat_error = pf['stat_error']/self.cosmo.h
+		self.r_hMpc = 0.5 * (self.bins[:-1] + self.bins[1:])
 		self.N = pf['N'].astype(np.int32)
 
+	def _profile(self, data_L, data_S):
+		''' Computes profile for CompressedCatalog
+		'''
+		dict_per_lens = {'data_L': data_L, 'data_S': data_S, 
+						'bins': self.bins, 'back_dz': self.back_dz, 'nboot': self.nboot}
+
+		# Compute profiles per lens
+		with Parallel(n_jobs=self.njobs, require='sharedmem') as parallel:
+			delayed_fun = delayed(_profile_per_lens)
+			pf = parallel(delayed_fun(j, dict_per_lens) for j in range(len(data_L)))
+		return pf
 
 	def _reduce(self, pf):
 
@@ -335,14 +343,3 @@ class CompressedProfile(Profile):
 		x['N'] = N	
 		return x
 
-	def _profile(self, data_L, data_S):
-		''' Computes profile for CompressedCatalog
-		'''
-		dict_per_lens = {'data_L': data_L, 'data_S': data_S, 
-						'bins': self.bins, 'back_dz': self.back_dz, 'nboot': self.nboot}
-
-		# Compute profiles per lens
-		with Parallel(n_jobs=self.njobs, require='sharedmem') as parallel:
-			delayed_fun = delayed(_profile_per_lens)
-			pf = parallel(delayed_fun(j, dict_per_lens) for j in range(len(data_L)))
-		return pf
