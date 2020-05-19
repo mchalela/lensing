@@ -76,7 +76,7 @@ class cat_paths:
 def read_columns(hdf5file, columns):
 	'''Read catalogue columns into pandas DataFrame
 	'''
-	file = h5py.File(hdf5file)
+	file = h5py.File(hdf5file, 'r')
 	groups = list(file.keys())
 
 	data = pd.DataFrame()

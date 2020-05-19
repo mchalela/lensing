@@ -3,6 +3,7 @@ import datetime
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 from astropy.cosmology import LambdaCDM
 from joblib import Parallel, delayed
 
@@ -38,6 +39,7 @@ def _map_per_lens(j, dict_per_lens):
     data_S = dict_per_lens['data_S']
     bins = dict_per_lens['bins']
     back_dz = dict_per_lens['back_dz']
+    nbins = len(bins)-1
     #cosmo = dict_per_lens['cosmo']
 
     dL = data_L.iloc[j]
@@ -69,7 +71,7 @@ def _map_per_lens(j, dict_per_lens):
                     'sigma_critic': sigma_critic,
                     'e1': dS['e1'].values, 'e2': dS['e2'].values}
 
-    xshape = (len(bins)-1, len(bins)-1)
+    xshape = (nbins, nbins)
     x = {'shear1_j': np.zeros(xshape), 'shear2_j': np.zeros(xshape),
          'accum_w_j': np.zeros(xshape), 'm_cal_num_j': np.zeros(xshape),
          'stat_error_num_j': np.zeros(xshape), 'N_j': np.zeros(xshape)}
@@ -94,23 +96,23 @@ def _map_per_lens(j, dict_per_lens):
 
 class Map(object):
 
-    def __init__(self, nbins=None, box_size_hMpc=None, 
-        cosmo=cosmo, back_dz=0., precompute_distances=True, njobs=1):
+    def __init__(self, nbins, box_size_hMpc, cosmo, back_dz, precompute_distances, njobs):
 
         self.cosmo = cosmo
         self.njobs = njobs
         self.back_dz = back_dz
         self.nbins = nbins
-        self.bins = gentools.make_bins(-box_size_hMpc/2., box_size_hMpc/2., nbins=nbins)
+        self.bins = gentools.make_bins(-box_size_hMpc/2., box_size_hMpc/2., nbins=nbins, space='lin')
 
     def __getitem__(self, key):
         return getattr(self, key)
 
     def QuickPlot(self, normed=True, cmap='gist_heat_r'):
 
+        #norm = LogNorm(vmin=1., vmax=self.shear.max(), clip=True)
         quiveropts = dict(headlength=0, headwidth=0, headaxislength=0,
                               pivot='middle', units='xy',
-                              alpha=1, color='black')
+                              alpha=1, color='black')#, norm=norm)
         plt.figure()
         if normed:
             plt.quiver(self.px, self.py, 
@@ -121,18 +123,20 @@ class Map(object):
                     self.shearx, self.sheary, 
                     self.shear, cmap=cmap, **quiveropts)
         cbar = plt.colorbar()
-        cbar.ax.set_ylabel('$\Vert \gamma \Vert$', fontsize=14)
-        plt.xlabel('$r\,[Mpc/h]$', fontsize=14)
-        plt.ylabel('$r\,[Mpc/h]$', fontsize=14)
+        cbar.ax.set_ylabel('$\Delta\Sigma [h\,M_{\odot}/pc^2]$', fontsize=12)
+        plt.xlabel('$r\,[Mpc/h]$', fontsize=12)
+        plt.ylabel('$r\,[Mpc/h]$', fontsize=12)
         plt.show()
 
 
 @gentools.timer
 class CompressedMap(Map):
 
-    def __init__(self, data_L, data_S, nbins=None, box_size_hMpc=None, cosmo=cosmo):
+    def __init__(self, data_L, data_S, nbins=10, box_size_hMpc=0.5, 
+        cosmo=cosmo, back_dz=0.1, precompute_distances=True, njobs=1):
 
-        super().__init__(nbins=None, box_size_hMpc=None, cosmo=cosmo)
+        super().__init__(nbins=nbins, box_size_hMpc=box_size_hMpc, cosmo=cosmo,
+            back_dz=back_dz, precompute_distances=precompute_distances, njobs=njobs)
 
         if data_S.index.name is not 'CATID':
             data_S_indexed = data_S.set_index('CATID')

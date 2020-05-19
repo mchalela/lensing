@@ -58,16 +58,15 @@ def seconds2str(dt):
     if s > 60.:
     	dt = f'{s:.1f}s'
     elif s > 1.:
-    	dt = f'{s:.2f}s'
+    	return f'{s:.2f}s'
     else:
     	ms = s/1000.	# miliseconds
-    	dt = f'{ms:.2f}ms'
+    	return f'{ms:.2f}ms'
 
-    dt = f'{s:.3f}s'
     if h != 0: 
-        dt = f'{h:02d}h{m:02d}m' + dt
+        dt = f'{h:d}h{m:02d}m' + dt
     elif m !=0:
-        dt = f'{m:02d}m' + dt
+        dt = f'{m:d}m' + dt
     return dt	
 
 def timer(method):
