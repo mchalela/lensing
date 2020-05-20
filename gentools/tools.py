@@ -54,14 +54,13 @@ class classonly(classmethod):
 def seconds2str(dt):
     '''Convert seconds to a printable format'''
     h, m, s = int(dt//3600), int((dt%3600) // 60), dt % 60
-
     if dt > 60.:
     	_str = f'{s:.1f}s'
     elif dt > 1.:
     	_str = f'{s:.2f}s'
     elif dt > 1e-3:
-    	ms = int(s*1e3)	# miliseconds
-    	_str = f'{ms:d}ms'
+        ms = int(s*1e3)	# miliseconds
+        _str = f'{ms:d}ms'
     elif dt > 1e-6:
     	mus = int(s*1e6)	# microseconds
     	_str = f'{mus:d}\u03BCs'
