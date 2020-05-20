@@ -3,7 +3,7 @@ import datetime
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
+#from matplotlib.colors import LogNorm
 from astropy.cosmology import LambdaCDM
 from joblib import Parallel, delayed
 

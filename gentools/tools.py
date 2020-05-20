@@ -55,19 +55,22 @@ def seconds2str(dt):
     '''Convert seconds to a printable format'''
     h, m, s = int(dt//3600), int((dt%3600) // 60), dt % 60
 
-    if s > 60.:
-    	dt = f'{s:.1f}s'
-    elif s > 1.:
-    	return f'{s:.2f}s'
-    else:
-    	ms = s/1000.	# miliseconds
-    	return f'{ms:.2f}ms'
+    if dt > 60.:
+    	_str = f'{s:.1f}s'
+    elif dt > 1.:
+    	_str = f'{s:.2f}s'
+    elif dt > 1e-3:
+    	ms = int(s*1e3)	# miliseconds
+    	_str = f'{ms:d}ms'
+    elif dt > 1e-6:
+    	mus = int(s*1e6)	# microseconds
+    	_str = f'{mus:d}\u03BCs'
 
     if h != 0: 
-        dt = f'{h:d}h{m:02d}m' + dt
+        _str = f'{h:d}h{m:02d}m' + _str
     elif m !=0:
-        dt = f'{m:d}m' + dt
-    return dt	
+        _str = f'{m:d}m' + _str
+    return _str	
 
 def timer(method):
     '''Decorator to time a function runtime'''
