@@ -195,96 +195,45 @@ class CompressedMap(Map):
         x['N'] = mp['N']
         return x
 
-
+@gentools.timer
 class ExpandedMap(Map):
 
-    def __init__(self, data=None, nbins=None, gals_per_bins=50., box_size_hMpc=None, cosmo=cosmo):
+    def __init__(self, data=None, nbins=10, box_size_hMpc=0.5, 
+        cosmo=cosmo, back_dz=0.1, precompute_distances=True, njobs=1):
 
-        super().__init__(nbins=None, gals_per_bins=50., box_size_hMpc=None, cosmo=cosmo)
+        super().__init__(nbins=nbins, box_size_hMpc=box_size_hMpc, cosmo=cosmo,
+            back_dz=back_dz, precompute_distances=precompute_distances, njobs=njobs)
 
-        # Define some parameters...
-        nGalaxies = len(data)
-        Mpc_scale = self.set_Mpc_scale(dl=data['DL'])
-        sigma_critic = self.set_sigma_critic(dl=data['DL'], ds=data['DS'], dls=data['DLS'])
+        mp = self._map(data=data)
+        mp = self._reduce(mp)
+        mp = self._cartesian(mp)
 
-        # Compute distance and ellipticity components...
-        dist, theta = gentools.sphere_angular_vector(data['RAJ2000'], data['DECJ2000'],
-                                                    data['RA'], data['DEC'], units='deg')
-        theta += 90. 
-        dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # distance to the lens in Mpc/h
-
-        # Transfrom e1,e2 to cartesian components ex,ey
-        px = dist_hMpc * np.cos(np.deg2rad(theta))
-        py = dist_hMpc * np.sin(np.deg2rad(theta))
-
-        # Define the length of the box    
-        if box_size_hMpc is None:
-            x_min, x_max = px.min(), px.max()
-            y_min, y_max = py.min(), py.max()
-        else:
-            x_min, x_max = -box_size_hMpc/2., box_size_hMpc/2.
-            y_min, y_max = -box_size_hMpc/2., box_size_hMpc/2.
-
-        # Get the bin of each galaxy
-        if nbins is None:
-            nbins = int(nGalaxies / np.sqrt(gals_per_bins))
-
-        bins_x = np.linspace(x_min, x_max, nbins+1)
-        bins_y = np.linspace(y_min, y_max, nbins+1)
-        digit_x = np.digitize(px, bins=bins_x)-1
-        digit_y = np.digitize(py, bins=bins_y)-1
-    
-        px_map, py_map = np.meshgrid((bins_x[:-1]+bins_x[1:])/2.,
-                                    (bins_y[:-1]+bins_y[1:])/2.,
-                                    indexing='xy')
-        e1_map = np.zeros((nbins, nbins), dtype=float)
-        e2_map = np.zeros((nbins, nbins), dtype=float)
-        self.N = np.zeros((nbins, nbins), dtype=int)
-
-        # Average the ellipticities.
-        # Should this average be calibrated with the m bias ??
-        for ix in range(nbins):
-            maskx = digit_x==ix
-            for iy in range(nbins):
-                masky = digit_y==iy
-                mask = maskx*masky
-                if mask.sum()==0: continue
-
-                weight = data['weight'][mask]/sigma_critic[mask]**2
-                m_cal = 1 + np.average(data['m'][mask], weights=weight)
-
-                e1_map[iy, ix] = np.average(data['e1'][mask]*sigma_critic[mask], weights=weight) / m_cal
-                e2_map[iy, ix] = np.average(data['e2'][mask]*sigma_critic[mask], weights=weight) / m_cal
-
-                self.N[iy, ix] = mask.sum()
-
-        e_mod = np.sqrt(e1_map**2 + e2_map**2)
-        beta = np.arctan2(e2_map, e1_map)/2.
-        ex_map = e_mod * np.cos(beta)
-        ey_map = e_mod * np.sin(beta)
-
-        self.px = px_map
-        self.py = py_map
-        self.ex = ex_map
-        self.ey = ey_map
-        self.e1 = e1_map
-        self.e2 = e2_map
+        # Now in units of h*Msun/pc**2
+        self.N = mp['N'].astype(np.int32)
+        self.beta = mp['beta']
+        self.shear = mp['shear']/self.cosmo.h
+        self.shearx = mp['shearx']/self.cosmo.h
+        self.sheary = mp['sheary']/self.cosmo.h
+        self.stat_error = mp['stat_error']/self.cosmo.h
+        
+        bins_centre = 0.5 * (self.bins[:-1] + self.bins[1:])
+        self.px, self.py = np.meshgrid(bins_centre, bins_centre, indexing='xy')
 
     def _map(self, data):
         ''' Computes map for CompressedCatalog
         '''
-        mask_dz = data['Z_B'] >= data['Z'] + self.back_dz
+        mask_dz = data['Z_B'].values >= data['Z'].values + self.back_dz
         data = data[mask_dz]
 
-        DD = gentools.compute_lensing_distances(zl=data['Z'], zs=data['Z_B'],
-            precomputed=True, cosmo=self.cosmo)
-        
+        DD = gentools.compute_lensing_distances(zl=data['Z'].values, zs=data['Z_B'].values,
+            precomputed=True, cache=True)#, cosmo=self.cosmo)
+
         Mpc_scale = gentools.Mpc_scale(dl=DD['DL'])
         sigma_critic = gentools.sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS'])
-
+        
         # Compute distance and ellipticity components...
-        dist, theta = gentools.sphere_angular_vector(data['RAJ2000'], data['DECJ2000'],
-                                                    data['RA'], data['DEC'], units='deg')
+        dist, theta = gentools.sphere_angular_vector(data['RAJ2000'].values, data['DECJ2000'].values,
+                                                    data['RA'].values, data['DEC'].values, units='deg')
         theta += 90. 
         dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # radial distance to the lens centre in Mpc/h
 
@@ -299,19 +248,26 @@ class ExpandedMap(Map):
                         'sigma_critic': sigma_critic,
                         'e1': data['e1'].values, 'e2': data['e2'].values}
 
-        xshape = (len(bins)-1, len(bins)-1)
+        xshape = (self.nbins, self.nbins)
         x = {'shear1_j': np.zeros(xshape), 'shear2_j': np.zeros(xshape),
              'accum_w_j': np.zeros(xshape), 'm_cal_num_j': np.zeros(xshape),
              'stat_error_num_j': np.zeros(xshape), 'N_j': np.zeros(xshape)}
-            return mp
+
+        with Parallel(n_jobs=self.njobs) as parallel:
+            delayed_fun = delayed(_map_per_bin)
+            mp = parallel(delayed_fun(
+                (digit_x==ix)*(digit_y==iy), dict_per_bin
+                ) for ix in range(self.nbins) for iy in range(self.nbins))
+
+        return mp
 
     def _reduce(self, mp):
-        N = np.sum( [mp[_]['N_j'] for _ in range(len(mp))], axis=0)
-        shear1 = np.sum( [mp[_]['shear1_j'] for _ in range(len(mp))], axis=0)
-        shear2 = np.sum( [mp[_]['shear2_j'] for _ in range(len(mp))], axis=0)
-        accum_w = np.sum( [mp[_]['accum_w_j'] for _ in range(len(mp))], axis=0)
-        m_cal_num = np.sum( [mp[_]['m_cal_num_j'] for _ in range(len(mp))], axis=0)
-        stat_error_num = np.sum( [mp[_]['stat_error_num_j'] for _ in range(len(mp))], axis=0)
+        N = np.array( [mp[_]['N_i'] for _ in range(len(mp))]).reshape((self.nbins, self.nbins)).T
+        shear1 = np.array( [mp[_]['shear1_i'] for _ in range(len(mp))]).reshape((self.nbins, self.nbins)).T
+        shear2 = np.array( [mp[_]['shear2_i'] for _ in range(len(mp))]).reshape((self.nbins, self.nbins)).T
+        accum_w = np.array( [mp[_]['accum_w_i'] for _ in range(len(mp))]).reshape((self.nbins, self.nbins)).T
+        m_cal_num = np.array( [mp[_]['m_cal_num_i'] for _ in range(len(mp))]).reshape((self.nbins, self.nbins)).T
+        stat_error_num = np.array( [mp[_]['stat_error_num_i'] for _ in range(len(mp))]).reshape((self.nbins, self.nbins)).T
 
         m_cal = m_cal_num / accum_w
         x = {}

@@ -229,21 +229,21 @@ class ExpandedProfile(Profile):
 		''' Computes profile for ExpandedCatalog
 		'''
 		#if self.back_dz != 0.:
-		mask_dz = data['Z_B'] >= data['Z'] + self.back_dz
+		mask_dz = data['Z_B'].values >= data['Z'].values + self.back_dz
 		data = data[mask_dz]
 
-		DD = gentools.compute_lensing_distances(zl=data['Z'], zs=data['Z_B'],
+		DD = gentools.compute_lensing_distances(zl=data['Z'].values, zs=data['Z_B'].values,
 			precomputed=True, cosmo=self.cosmo)
 		
 		Mpc_scale = gentools.Mpc_scale(dl=DD['DL'])
 		sigma_critic = gentools.sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS'])
 
 		# Compute distance and ellipticity components...
-		dist, theta = gentools.sphere_angular_vector(data['RAJ2000'], data['DECJ2000'],
-													data['RA'], data['DEC'], units='deg')
+		dist, theta = gentools.sphere_angular_vector(data['RAJ2000'].values, data['DECJ2000'].values,
+													data['RA'].values, data['DEC'].values, units='deg')
 		theta += 90. 
 		dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # radial distance to the lens centre in Mpc/h
-		et, ex = gentools.polar_rotation(data['e1'], data['e2'], np.deg2rad(theta))
+		et, ex = gentools.polar_rotation(data['e1'].values, data['e2'].values, np.deg2rad(theta))
 
 		digit = np.digitize(dist_hMpc, bins=self.bins)-1
 			

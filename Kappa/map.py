@@ -23,22 +23,18 @@ class KappaMap(object):
     arxiv.org/pdf/1801.08945.pdf
     '''
 
-    def __init__(self, data=None, nbins=None, gals_per_bins=50., box_size_hMpc=None, boot_n=0, cosmo=cosmo):
+    def __init__(self, data=None, nbins=None, box_size_hMpc=None, nboot=0, cosmo=cosmo):
 
         if data is None:
             raise ValueError('KappaMap needs some data to work with...')
 
-        # Set nbins
-        if nbins is None:
-            nbins = int(nGalaxies / np.sqrt(gals_per_bins))
-
         # Compute kappa and error map
         self.kappa = self._kappa_map(data, nbins, box_size_hMpc, cosmo)
-        if boot_n>0:
-            self.kappa_err = self._error_map(boot_n, data, nbins, box_size_hMpc, cosmo)
+        if nboot>0:
+            self.kappa_err = self._error_map(nboot, data, nbins, box_size_hMpc, cosmo)
 
 
-    def _kappa_map(self, data, nbins, box_size_hMpc, cosmo, save_ref=True):
+    def _kappa_map(self, data, nbins, box_size_hMpc, cosmo, save_shear_map=True):
 
         # Compute the shear map
         shear_map = Shear.ShearMap(data=data, nbins=nbins, 
@@ -51,7 +47,7 @@ class KappaMap(object):
         bin_size = (dx, dy)    # in Mpc/h
 
         # Save shear map for reference
-        if save_ref:
+        if save_shear_map:
             self.shear_map = shear_map
             self.px, self.py = px, py      # in Mpc/h
             self.bin_size = bin_size
@@ -104,7 +100,7 @@ class KappaMap(object):
             else:
                 b_data = data[i]         # assuming numpy array
 
-            b_kappa = self._kappa_map(b_data, nbins, box_size_hMpc, cosmo, save_ref=False)
+            b_kappa = self._kappa_map(b_data, nbins, box_size_hMpc, cosmo, save_shear_map=False)
             kE_err_cube[:, :, i] = b_kappa.real
             kB_err_cube[:, :, i] = b_kappa.imag
 
@@ -113,6 +109,11 @@ class KappaMap(object):
         error_map = kE_err + 1j*kB_err
         return error_map
 
+    # resize and smooth the image
+    def _resize_and_smooth(km):
+        km = ndimage.zoom(km, zoom=resize, order=0)
+        km = ndimage.gaussian_filter(km, sigma=sigma_pix*resize, truncate=truncate)
+        return km
 
     def gaussian_filter(self, sigma_hkpc=10., truncate=5, resize=1, apply_to_err=False):
         ''' Apply gaussian filter to reduce high frequency noise
@@ -122,24 +123,40 @@ class KappaMap(object):
         sigma_hMpc = sigma_hkpc * 1e-3
         sigma_pix = sigma_hMpc/dx
 
-        # resize and smooth the image
-        def resize_and_smooth(km):
-            km = ndimage.zoom(km, zoom=resize, order=0)
-            km = ndimage.gaussian_filter(km, sigma=sigma_pix*resize, truncate=truncate)
-            return km
 
-        kE = resize_and_smooth(self.kappa.real)
-        kB = resize_and_smooth(self.kappa.imag)
+        kE = _resize_and_smooth(self.kappa.real)
+        kB = _resize_and_smooth(self.kappa.imag)
         smooth_kappa = kE + 1j*kB
 
         if apply_to_err:
-            kE_err = resize_and_smooth(self.kappa_err.real)
-            kB_err = resize_and_smooth(self.kappa_err.imag)
+            kE_err = _resize_and_smooth(self.kappa_err.real)
+            kB_err = _resize_and_smooth(self.kappa_err.imag)
             smooth_kappa_err = kE_err + 1j*kB_err
             return smooth_kappa, smooth_kappa_err
         else:
             return smooth_kappa
 
+    def _plot(mE, mB, title):
+        extent = [self.px.min(), self.px.max(),self.py.min(), self.py.max()]
+        vmin, vmax = mE.min(), mE.max()
+
+        fig, ax = plt.subplots(nrows=1, ncols=2)
+        ax[0].set(aspect='equal')
+        im = ax[0].imshow(mE, extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
+        ax[0].set_xlabel('$x\,[Mpc/h]$', fontsize=12)
+        ax[0].set_ylabel('$y\,[Mpc/h]$', fontsize=12)
+        ax[0].set_title('E-mode', fontsize=12)
+
+        ax[1].set(aspect='equal')
+        ax[1].imshow(mB, extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
+        ax[1].set_xlabel('$x\,[Mpc/h]$', fontsize=12)
+        ax[1].set_title('B-mode', fontsize=12)
+
+        cbar = fig.colorbar(im,  ax=ax.ravel().tolist(), orientation='horizontal')
+        cbar.ax.set_xlabel(r'$\mathrm{\Sigma\,[\,h\,M_{\odot}\,pc^{-2}\,]}$', fontsize=12)
+        plt.suptitle(title, fontsize=14)
+        plt.show()
+        return None
 
     def QuickPlot(self, sigma_hkpc=0., resize=1, plot_err=False, cmap='jet'):
         ''' Plot the reconstructed kappa map.
@@ -160,29 +177,8 @@ class KappaMap(object):
             else:
                 kE, kB = self.kappa.real, self.kappa.imag
 
-        def plot(mE, mB, title):
-            extent = [self.px.min(), self.px.max(),self.py.min(), self.py.max()]
-            vmin, vmax = mE.min(), mE.max()
 
-            fig, ax = plt.subplots(nrows=1, ncols=2)
-            ax[0].set(aspect='equal')
-            im = ax[0].imshow(mE, extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
-            ax[0].set_xlabel('$x\,[Mpc/h]$', fontsize=12)
-            ax[0].set_ylabel('$y\,[Mpc/h]$', fontsize=12)
-            ax[0].set_title('E-mode', fontsize=12)
-
-            ax[1].set(aspect='equal')
-            ax[1].imshow(mB, extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
-            ax[1].set_xlabel('$x\,[Mpc/h]$', fontsize=12)
-            ax[1].set_title('B-mode', fontsize=12)
-
-            cbar = fig.colorbar(im,  ax=ax.ravel().tolist(), orientation='horizontal')
-            cbar.ax.set_xlabel(r'$\mathrm{\Sigma\,[\,h\,M_{\odot}\,pc^{-2}\,]}$', fontsize=12)
-            plt.suptitle(title, fontsize=14)
-            plt.show()
-            return None
-
-        plot(kE, kB, 'Convergence Map')
+        _plot(kE, kB, 'Convergence Map')
         if plot_err:
-            plot(kE_err, kB_err, 'Convergence Map Error')
+            _plot(kE_err, kB_err, 'Convergence Map Error')
         return None
