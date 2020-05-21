@@ -66,6 +66,7 @@ def _profile_per_lens(j, dict_per_lens):
 	bins = dict_per_lens['bins']
 	back_dz = dict_per_lens['back_dz']
 	nboot = dict_per_lens['nboot']
+	precomp_dist = dict_per_lens['precomputed_distances']
 	#cosmo = dict_per_lens['cosmo']
 
 	dL = data_L.iloc[j]
@@ -75,7 +76,7 @@ def _profile_per_lens(j, dict_per_lens):
 	dS = dS[mask_dz]
 
 	DD = gentools.compute_lensing_distances(zl=dL['Z'], zs=dS['Z_B'].values,
-		precomputed=True, cache=True)#, cosmo=self.cosmo)
+		precomputed=precomp_dist, cache=True)#, cosmo=self.cosmo)
 
 	Mpc_scale = gentools.Mpc_scale(dl=DD['DL'])
 	sigma_critic = gentools.sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS'])
@@ -113,7 +114,7 @@ def _profile_per_lens(j, dict_per_lens):
 	return x
 # =============================================================================================
 
-def read_profile(self, file, colnames=True):
+def read_profile(file, colnames=True):
 	''' Read profile written with Profile.write_to() method
 	'''
 	with open(file,'r') as f:
@@ -135,20 +136,28 @@ def read_profile(self, file, colnames=True):
 class Profile(object):
 
 	def __init__(self, rin_hMpc=0.1, rout_hMpc=10., nbins=10, space='log',
-		nboot=0, cosmo=cosmo, back_dz=0., precompute_distances=True, njobs=1):
+		nboot=0, cosmo=cosmo, back_dz=0.):
 		
 		#if not isinstance(cat, ExpandedCatalog):
 		#	raise TypeError('cat must be a LensCat.ExpandedCatalog catalog.')
 
 		self.cosmo = cosmo
 		self.nboot = nboot
-		self.njobs = njobs
 		self.back_dz = back_dz
 
 		self.bins = gentools.make_bins(rin_hMpc, rout_hMpc, nbins=bins, space=space)
 		self.nbins = nbins
 		self.rin_hMpc  = self.bins[0]
 		self.rout_hMpc = self.bins[-1]
+
+		# Initialize
+		self.shear = None
+		self.cero = None
+		self.shear_error = None
+		self.cero_error = None
+		self.stat_error = None
+		self.r_hMpc = None
+		self.N = None
 
 
 	def __getitem__(self, key):
@@ -207,10 +216,12 @@ class Profile(object):
 class ExpandedProfile(Profile):
 
 	def __init__(self, data=None, rin_hMpc=0.1, rout_hMpc=10., nbins=10, space='log', 
-		nboot=0, cosmo=cosmo, back_dz=0., precompute_distances=True, njobs=1):
+		nboot=0, cosmo=cosmo, back_dz=0., precomputed_distances=True, njobs=1):
 		
-		super().__init__(rin_hMpc, rout_hMpc, nbins, space, 
-							nboot, cosmo, back_dz, precompute_distances, njobs)
+		super().__init__(rin_hMpc, rout_hMpc, nbins, space, nboot, cosmo, back_dz)
+
+		self.njobs = njobs
+		self.precomputed_distances = precomputed_distances
 
 		pf = self._profile(data=data)
 		pf = self._reduce(pf)
@@ -233,7 +244,7 @@ class ExpandedProfile(Profile):
 		data = data[mask_dz]
 
 		DD = gentools.compute_lensing_distances(zl=data['Z'].values, zs=data['Z_B'].values,
-			precomputed=True, cosmo=self.cosmo)
+			precomputed=self.precomputed_distances, cosmo=self.cosmo)
 		
 		Mpc_scale = gentools.Mpc_scale(dl=DD['DL'])
 		sigma_critic = gentools.sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS'])
@@ -286,13 +297,15 @@ class ExpandedProfile(Profile):
 class CompressedProfile(Profile):
 
 	def __init__(self, data_L, data_S, rin_hMpc=0.1, rout_hMpc=10., nbins=10, space='log',
-		nboot=0, cosmo=cosmo, back_dz=0., precompute_distances=True, njobs=1):
+		nboot=0, cosmo=cosmo, back_dz=0., precomputed_distances=True, njobs=1):
 		
 		#if not isinstance(cat, (CompressedCatalog, ExpandedCatalog)):
 		#	raise TypeError('cat must be a LensCat catalog.')
 
-		super().__init__(rin_hMpc, rout_hMpc, nbins, space, 
-							nboot, cosmo, back_dz, precompute_distances, njobs)
+		super().__init__(rin_hMpc, rout_hMpc, nbins, space, nboot, cosmo, back_dz)
+
+		self.njobs = njobs
+		self.precomputed_distances = precomputed_distances
 
 		if data_S.index.name is not 'CATID':
 			data_S_indexed = data_S.set_index('CATID')
@@ -312,7 +325,8 @@ class CompressedProfile(Profile):
 		''' Computes profile for CompressedCatalog
 		'''
 		dict_per_lens = {'data_L': data_L, 'data_S': data_S, 
-						'bins': self.bins, 'back_dz': self.back_dz, 'nboot': self.nboot}
+						'bins': self.bins, 'back_dz': self.back_dz, 
+						'nboot': self.nboot, 'precomputed_distances': self.precomputed_distances}
 
 		# Compute profiles per lens
 		with Parallel(n_jobs=self.njobs, require='sharedmem') as parallel:
