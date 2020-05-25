@@ -191,12 +191,12 @@ class CompressedMap(Map):
 
         # Now in units of h*Msun/pc**2
         self.N = mp['N'].astype(np.int32)
+        self.beta = mp['beta']
+        self.shear  = mp['shear']/self.cosmo.h
         self.shear1 = mp['shear1']/self.cosmo.h
         self.shear2 = mp['shear2']/self.cosmo.h
         self.shearx = mp['shearx']/self.cosmo.h
         self.sheary = mp['sheary']/self.cosmo.h
-        self.shear  = mp['shear']/self.comso.h
-        self.beta = mp['beta']
         self.stat_error = mp['stat_error']/self.cosmo.h
 
         bins_centre = 0.5 * (self.bins[:-1] + self.bins[1:])
@@ -254,6 +254,8 @@ class ExpandedMap(Map):
 
         # Now in units of h*Msun/pc**2
         self.N = mp['N'].astype(np.int32)
+        self.beta = mp['beta']
+        self.shear  = mp['shear']/self.cosmo.h
         self.shear1 = mp['shear1']/self.cosmo.h
         self.shear2 = mp['shear2']/self.cosmo.h
         self.shearx = mp['shearx']/self.cosmo.h
@@ -326,6 +328,8 @@ class ExpandedMap(Map):
         beta = np.arctan2(mp['shear2'], mp['shear1'])/2.
         mp['shearx'] = shear * np.cos(beta)
         mp['sheary'] = shear * np.sin(beta)
+        mp['shear'] = shear
+        mp['beta'] = beta
         return mp
 
 
