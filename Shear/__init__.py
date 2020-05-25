@@ -1,2 +1,2 @@
-from .profile import CompressedProfile, ExpandedProfile
-from .map import ShearMap
+from .profile import CompressedProfile, ExpandedProfile, Profile
+from .map import CompressedMap, ExpandedMap, Map
