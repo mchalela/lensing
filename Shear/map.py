@@ -115,6 +115,7 @@ class Map(object):
         self.cosmo = cosmo
         self.back_dz = back_dz
         self.nbins = nbins
+        self.box_size_hMpc = box_size_hMpc
         if box_size_hMpc is not None:
             self.bins = gentools.make_bins(-box_size_hMpc/2., box_size_hMpc/2., nbins=nbins, space='lin') 
 
@@ -243,10 +244,12 @@ class CompressedMap(Map):
 class ExpandedMap(Map):
 
     def __init__(self, data=None, nbins=10, box_size_hMpc=0.5, 
-        cosmo=cosmo, back_dz=0.1, precompute_distances=True, njobs=1):
+        cosmo=cosmo, back_dz=0.1, precomputed_distances=True, njobs=1):
 
-        super().__init__(nbins=nbins, box_size_hMpc=box_size_hMpc, cosmo=cosmo,
-            back_dz=back_dz, precompute_distances=precompute_distances, njobs=njobs)
+        super().__init__(nbins=nbins, box_size_hMpc=box_size_hMpc, cosmo=cosmo, back_dz=back_dz)
+
+        self.njobs = njobs
+        self.precomputed_distances = precomputed_distances
 
         mp = self._map(data=data)
         mp = self._reduce(mp)
@@ -272,7 +275,7 @@ class ExpandedMap(Map):
         data = data[mask_dz]
 
         DD = gentools.compute_lensing_distances(zl=data['Z'].values, zs=data['Z_B'].values,
-            precomputed=True, cache=True)#, cosmo=self.cosmo)
+            precomputed=self.precomputed_distances, cache=True)#, cosmo=self.cosmo)
 
         Mpc_scale = gentools.Mpc_scale(dl=DD['DL'])
         sigma_critic = gentools.sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS'])
