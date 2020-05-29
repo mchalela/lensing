@@ -65,7 +65,7 @@ class Map(object):
         return T_Dconj
 
     # resize and smooth the image
-    def _resize_and_smooth(km, resize, sigma_pix, truncate):
+    def _resize_and_smooth(self, km, resize, sigma_pix, truncate):
         km = ndimage.zoom(km, zoom=resize, order=0)
         km = ndimage.gaussian_filter(km, sigma=sigma_pix*resize, truncate=truncate)
         return km
@@ -78,19 +78,19 @@ class Map(object):
         sigma_hMpc = sigma_hkpc * 1e-3
         sigma_pix = sigma_hMpc/dx
 
-        kE = _resize_and_smooth(self.kappa.real, resize, sigma_pix, truncate)
-        kB = _resize_and_smooth(self.kappa.imag, resize, sigma_pix, truncate)
+        kE = self._resize_and_smooth(self.kappa.real, resize, sigma_pix, truncate)
+        kB = self._resize_and_smooth(self.kappa.imag, resize, sigma_pix, truncate)
         smooth_kappa = kE + 1j*kB
 
         if apply_to_err:
-            kE_err = _resize_and_smooth(self.kappa_err.real, resize, sigma_pix, truncate)
-            kB_err = _resize_and_smooth(self.kappa_err.imag, resize, sigma_pix, truncate)
+            kE_err = self._resize_and_smooth(self.kappa_err.real, resize, sigma_pix, truncate)
+            kB_err = self._resize_and_smooth(self.kappa_err.imag, resize, sigma_pix, truncate)
             smooth_kappa_err = kE_err + 1j*kB_err
             return smooth_kappa, smooth_kappa_err
         else:
             return smooth_kappa
 
-    def _plot(mE, mB, title):
+    def _plot(self, mE, mB, title, cmap):
         extent = [self.px.min(), self.px.max(),self.py.min(), self.py.max()]
         vmin, vmax = mE.min(), mE.max()
 
@@ -115,7 +115,6 @@ class Map(object):
     def QuickPlot(self, sigma_hkpc=0., resize=1, plot_err=False, cmap='jet'):
         ''' Plot the reconstructed kappa map.
         '''
-
         if sigma_hkpc>0:
             if plot_err:
                 k, k_err = self.gaussian_filter(sigma_hkpc, resize=resize, apply_to_err=True)
@@ -132,13 +131,13 @@ class Map(object):
                 kE, kB = self.kappa.real, self.kappa.imag
 
 
-        _plot(kE, kB, 'Convergence Map')
+        self._plot(kE, kB, 'Convergence Map', cmap=cmap)
         if plot_err:
-            _plot(kE_err, kB_err, 'Convergence Map Error')
+            self._plot(kE_err, kB_err, 'Convergence Map Error', cmap=cmap)
         return None
 
 
-
+@gentools.timer
 class ExpandedMap(Map):
     '''
     Kaiser-Squires reconstruction
@@ -210,7 +209,7 @@ class ExpandedMap(Map):
         error_map = kE_err + 1j*kB_err
         return error_map
 
-
+@gentools.timer
 class CompressedMap(Map):
     '''
     Kaiser-Squires reconstruction
