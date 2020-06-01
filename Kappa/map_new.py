@@ -6,7 +6,9 @@ import matplotlib.pyplot as plt ; plt.ion()
 from astropy.stats import bootstrap
 from astropy.utils import NumpyRNGContext
 from astropy.cosmology import LambdaCDM
+from astropy.io import fits
 from scipy import fftpack, ndimage
+
 from .. import gentools, Shear 
 
 cosmo = LambdaCDM(H0=70, Om0=0.3, Ode0=0.7)
@@ -16,15 +18,6 @@ pc   = 3.085678e16  # 1 pc (m)
 Msun = 1.989e30     # Solar mass (kg)
 
 
-
-        hdulist.append(fits.ImageHDU(self.px, name='px'))
-        hdulist.append(fits.ImageHDU(self.py, name='py'))
-        hdulist.append(fits.ImageHDU(self.kappa.real, name='kappaE'))
-        hdulist.append(fits.ImageHDU(self.kappa.imag, name='kappaB'))
-        # Save shear map data
-        hdulist.append(fits.ImageHDU(self.shear_map.shearx, name='shearx'))
-        hdulist.append(fits.ImageHDU(self.shear_map.sheary, name='sheary'))
-        hdulist.append(fits.ImageHDU(self.shear_map.N, name='N'))
 
 def read_map(file):
     ''' Read profile written with Map.write_to() method
@@ -38,6 +31,10 @@ def read_map(file):
         mp.shear_map = Shear.Map()
         mp.shear_map.shearx = f['shearx'].data
         mp.shear_map.sheary = f['sheary'].data
+        mp.shear_map.shear = f['shear'].data
+        mp.shear_map.beta = f['beta'].data        
+        dx = mp.px[0,1]-mp.px[0,0]
+        mp.bin_size = (dx, dx)
     return mp
 
 class Map(object):
@@ -58,6 +55,7 @@ class Map(object):
         self.kappa = None
         self.shear_map = None
         self.N = None
+        self.bin_size = None
 
     def __getitem__(self, key):
         return getattr(self, key)
@@ -119,6 +117,7 @@ class Map(object):
             return smooth_kappa
 
     def _plot(self, mE, mB, title, cmap):
+        import matplotlib.cm
         cmap = matplotlib.cm.get_cmap(cmap)
         cmap.set_bad(color='k')
 
@@ -190,6 +189,8 @@ class Map(object):
         hdulist.append(fits.ImageHDU(self.kappa.imag, name='kappaB'))
         hdulist.append(fits.ImageHDU(self.N, name='N'))
         # Save shear map data
+        hdulist.append(fits.ImageHDU(self.shear_map.shearx, name='shear'))
+        hdulist.append(fits.ImageHDU(self.shear_map.sheary, name='beta'))
         hdulist.append(fits.ImageHDU(self.shear_map.shearx, name='shearx'))
         hdulist.append(fits.ImageHDU(self.shear_map.sheary, name='sheary'))
         hdulist = fits.HDUList(hdulist)

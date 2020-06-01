@@ -101,8 +101,8 @@ def read_map(file):
         mp.py = f['py'].data
         mp.shearx = f['shearx'].data
         mp.sheary = f['sheary'].data
-        mp.shear1 = f['shear1'].data
-        mp.shear2 = f['shear2'].data
+        mp.shear = f['shear'].data
+        mp.beta = f['beta'].data
         mp.stat_err = f['stat_err'].data
         mp.N = f['N'].data
     return mp
@@ -166,7 +166,7 @@ class Map(object):
                 raise IOError('File already exist. You may want to use overwrite=True.')
         
         hdulist = [fits.PrimaryHDU()]
-        for atr in ['px', 'py', 'shearx', 'sheary', 'shear1', 'shear2', 'stat_err', 'N']:
+        for atr in ['px', 'py', 'shearx', 'sheary', 'shear', 'beta', 'stat_err', 'N']:
             hdulist.append(fits.ImageHDU(self.__getitem__(atr), name=atr))
         hdulist = fits.HDUList(hdulist)
         hdulist.writeto(file, overwrite=overwrite)
