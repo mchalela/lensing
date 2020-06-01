@@ -2,7 +2,7 @@ import os, platform
 import datetime
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt; plt.ion()
 #from matplotlib.colors import LogNorm
 from astropy.cosmology import LambdaCDM
 from joblib import Parallel, delayed
@@ -150,6 +150,7 @@ class Map(object):
         plt.xlabel('$r\,[Mpc/h]$', fontsize=12)
         plt.ylabel('$r\,[Mpc/h]$', fontsize=12)
         plt.show()
+        return None
 
     def write_to(self, file, header=None, overwrite=False):
         '''Write Map to a FITS file.
@@ -180,7 +181,7 @@ class Map(object):
 @gentools.timer
 class CompressedMap(Map):
 
-    def __init__(self, data_L, data_S, nbins=10, box_size_hMpc=0.5, 
+    def __init__(self, data_L, data_S, nbins=10, box_size_hMpc=0.5, mirror=None,
         cosmo=cosmo, back_dz=0.1, precomputed_distances=True, njobs=1):
 
         super().__init__(nbins=nbins, box_size_hMpc=box_size_hMpc, cosmo=cosmo, back_dz=back_dz)
@@ -190,7 +191,11 @@ class CompressedMap(Map):
 
         if data_S.index.name is not 'CATID':
             data_S_indexed = data_S.set_index('CATID')
+
         mp = self._map(data_L=data_L, data_S=data_S_indexed)
+        mp = self._accum(mp)
+        if mirror is not None:
+            mp = self._mirror(mp, mirror=mirror)
         mp = self._reduce(mp)
         mp = self._cartesian(mp)
 
@@ -219,20 +224,35 @@ class CompressedMap(Map):
             mp = parallel(delayed_fun(j, dict_per_lens) for j in range(len(data_L)))
         return mp
 
-    def _reduce(self, mp):
-        N = np.sum( [mp[_]['N_j'] for _ in range(len(mp))], axis=0)
-        shear1 = np.sum( [mp[_]['shear1_j'] for _ in range(len(mp))], axis=0)
-        shear2 = np.sum( [mp[_]['shear2_j'] for _ in range(len(mp))], axis=0)
-        accum_w = np.sum( [mp[_]['accum_w_j'] for _ in range(len(mp))], axis=0)
-        m_cal_num = np.sum( [mp[_]['m_cal_num_j'] for _ in range(len(mp))], axis=0)
-        stat_error_num = np.sum( [mp[_]['stat_error_num_j'] for _ in range(len(mp))], axis=0)
+    def _accum(self, mp):
+        x = {}      
+        x['N'] = np.sum( [mp[_]['N_j'] for _ in range(len(mp))], axis=0)
+        x['shear1'] = np.sum( [mp[_]['shear1_j'] for _ in range(len(mp))], axis=0)
+        x['shear2'] = np.sum( [mp[_]['shear2_j'] for _ in range(len(mp))], axis=0)
+        x['accum_w'] = np.sum( [mp[_]['accum_w_j'] for _ in range(len(mp))], axis=0)
+        x['m_cal_num'] = np.sum( [mp[_]['m_cal_num_j'] for _ in range(len(mp))], axis=0)
+        x['stat_error_num'] = np.sum( [mp[_]['stat_error_num_j'] for _ in range(len(mp))], axis=0)
+        return x
 
-        m_cal = m_cal_num / accum_w
+    def _mirror(self, mp, mirror):
+        if mirror.lower() == 'x': axis = [1]
+        if mirror.lower() == 'y': axis = [0]
+        if mirror.lower() == 'xy': axis = [1, 0]
+        if mirror.lower() == 'yx': axis = [0, 1]
+
+        for ax in axis:
+            mp['shear2'] += -1*np.flip(mp['shear2'], axis=ax)   # only shear2 changes sign in each mirroring
+            for attr in ['shear1', 'N', 'accum_w', 'm_cal_num', 'stat_error_num']:
+                mp[attr] += np.flip(mp[attr], axis=ax)
+        return mp
+
+    def _reduce(self, mp):
         x = {}
-        x['shear1'] = (shear1/accum_w) / m_cal
-        x['shear2'] = (shear2/accum_w) / m_cal
-        x['stat_error'] = np.sqrt(stat_error_num/accum_w**2) / m_cal
-        x['N'] = N
+        m_cal = mp['m_cal_num'] / mp['accum_w']
+        x['shear1'] = (mp['shear1']/mp['accum_w']) / m_cal
+        x['shear2'] = (mp['shear2']/mp['accum_w']) / m_cal
+        x['stat_error'] = np.sqrt(mp['stat_error_num']/mp['accum_w']**2) / m_cal
+        x['N'] = mp['N']
         return x
 
     def _cartesian(self, mp):
@@ -338,39 +358,3 @@ class ExpandedMap(Map):
         mp['shear'] = shear
         mp['beta'] = beta
         return mp
-
-
-
-    def _mirror(self, data, mirror):
-
-        ra_gal, dec_gal = cat.data['RAJ2000'], cat.data['DECJ2000'] 
-        ra_cen, dec_cen = cat.data['RA'], cat.data['DEC']
-        e1_gal, e2_gal = cat.data['e1'], cat.data['e2']
-
-        angular_vector = gentools.sphere_angular_vector
-        rotate_pos = gentools.equatorial_coordinates_rotation
-        rotate_ellip = gentools.polar_rotation        
-
-        distance, orientation = angular_vector(
-            ra_gal, dec_gal, ra_cen, dec_cen, units='deg')
-        orientation += 90.
-
-        # Third quadrant
-        if miror in ['x', 'xy', 'yx']:
-            mask_3c = (orientation>180.)*(orientation<270)
-            ang = orientation[mask_3c] - 180
-            ra_rot_3c, dec_rot_3c = rotate_pos(
-                ra_gal[mask_3c], dec_gal[mask_3c],
-                ra_cen[mask_3c], dec_cen[mask_3c],
-                -2*ang, units='deg')
-
-        # Fourth quadrant
-        if miror in ['y', 'xy', 'yx']:
-            mask_4c = (orientation>=270.)*(orientation<360)
-            ang = 360 - orientation[mask_4c]
-            ra_rot_4c, dec_rot_4c = rotate_pos(
-                ra_gal[mask_4c], dec_gal[mask_4c],
-                ra_cen[mask_4c], dec_cen[mask_4c],
-                2*ang, units='deg')
-
-
