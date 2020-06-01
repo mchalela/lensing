@@ -33,6 +33,8 @@ def read_map(file):
         mp.shear_map.sheary = f['sheary'].data
         mp.shear_map.shear = f['shear'].data
         mp.shear_map.beta = f['beta'].data        
+        mp.shear_map.px = f['px'].data
+        mp.shear_map.py = f['py'].data
         dx = mp.px[0,1]-mp.px[0,0]
         mp.bin_size = (dx, dx)
     return mp

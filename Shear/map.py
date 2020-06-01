@@ -95,6 +95,8 @@ def _map_per_lens(j, dict_per_lens):
 def read_map(file):
     ''' Read profile written with Map.write_to() method
     '''
+    from astropy.io import fits
+
     with fits.open(file) as f:
         mp = Map()
         mp.px = f['px'].data
@@ -159,6 +161,8 @@ class Map(object):
                 Example: {'z_min':0.1, 'z_max':0.3, 'odds_min':0.5}
          overwrite: (bool) Flag to overwrite file if it already exists.
         '''
+        from astropy.io import fits
+        
         if os.path.isfile(file):
             if overwrite:
                 os.remove(file)
