@@ -17,6 +17,29 @@ Msun = 1.989e30     # Solar mass (kg)
 
 
 
+        hdulist.append(fits.ImageHDU(self.px, name='px'))
+        hdulist.append(fits.ImageHDU(self.py, name='py'))
+        hdulist.append(fits.ImageHDU(self.kappa.real, name='kappaE'))
+        hdulist.append(fits.ImageHDU(self.kappa.imag, name='kappaB'))
+        # Save shear map data
+        hdulist.append(fits.ImageHDU(self.shear_map.shearx, name='shearx'))
+        hdulist.append(fits.ImageHDU(self.shear_map.sheary, name='sheary'))
+        hdulist.append(fits.ImageHDU(self.shear_map.N, name='N'))
+
+def read_map(file):
+    ''' Read profile written with Map.write_to() method
+    '''
+    with fits.open(file) as f:
+        mp = Map()
+        mp.px = f['px'].data
+        mp.py = f['py'].data
+        mp.kappa = f['kappaE'].data + 1j*f['kappaB'].data
+        mp.N = f['N'].data
+        mp.shear_map = Shear.Map()
+        mp.shear_map.shearx = f['shearx'].data
+        mp.shear_map.sheary = f['sheary'].data
+    return mp
+
 class Map(object):
     '''
     Kaiser-Squires reconstruction
@@ -30,6 +53,11 @@ class Map(object):
         self.back_dz = back_dz
         self.box_size_hMpc = box_size_hMpc
         self._T_Dconj = None
+
+        self.px, self.py = None, None
+        self.kappa = None
+        self.shear_map = None
+        self.N = None
 
     def __getitem__(self, key):
         return getattr(self, key)
@@ -91,6 +119,9 @@ class Map(object):
             return smooth_kappa
 
     def _plot(self, mE, mB, title, cmap):
+        cmap = matplotlib.cm.get_cmap(cmap)
+        cmap.set_bad(color='k')
+
         extent = [self.px.min(), self.px.max(),self.py.min(), self.py.max()]
         vmin, vmax = mE.min(), mE.max()
 
@@ -136,6 +167,36 @@ class Map(object):
             self._plot(kE_err, kB_err, 'Convergence Map Error', cmap=cmap)
         return None
 
+    def write_to(self, file, header=None, overwrite=False):
+        '''Write Map to a FITS file.
+        Add a header to lensing.shear.Profile output file
+        to know the sample parameters used to build it.
+        
+         file:      (str) Name of output file
+         header:    (dic) Dictionary with parameter cuts. Optional.
+                Example: {'z_min':0.1, 'z_max':0.3, 'odds_min':0.5}
+         overwrite: (bool) Flag to overwrite file if it already exists.
+        '''
+        if os.path.isfile(file):
+            if overwrite:
+                os.remove(file)
+            else:
+                raise IOError('File already exist. You may want to use overwrite=True.')
+        
+        hdulist = [fits.PrimaryHDU()]
+        hdulist.append(fits.ImageHDU(self.px, name='px'))
+        hdulist.append(fits.ImageHDU(self.py, name='py'))
+        hdulist.append(fits.ImageHDU(self.kappa.real, name='kappaE'))
+        hdulist.append(fits.ImageHDU(self.kappa.imag, name='kappaB'))
+        hdulist.append(fits.ImageHDU(self.N, name='N'))
+        # Save shear map data
+        hdulist.append(fits.ImageHDU(self.shear_map.shearx, name='shearx'))
+        hdulist.append(fits.ImageHDU(self.shear_map.sheary, name='sheary'))
+        hdulist = fits.HDUList(hdulist)
+        hdulist.writeto(file, overwrite=overwrite)
+        return None
+
+
 
 @gentools.timer
 class ExpandedMap(Map):
@@ -155,7 +216,7 @@ class ExpandedMap(Map):
         self.nboot = nboot
 
         # Compute shear map
-        shear_map = self._shear_map(data_L, data_S, save_shear_map=True)
+        shear_map = self._shear_map(data, save_shear_map=True)
 
         # Compute kappa and error map
         self.kappa = self._kappa_map(shear_map)
@@ -176,6 +237,7 @@ class ExpandedMap(Map):
             bin_size = (dx, dy)    # in Mpc/h
             self.shear_map = shear_map
             self.px, self.py = px, py      # in Mpc/h
+            self.N = self.shear_map.N
             self.bin_size = bin_size
         return shear_map  
 
@@ -247,6 +309,7 @@ class CompressedMap(Map):
             bin_size = (dx, dy)    # in Mpc/h
             self.shear_map = shear_map
             self.px, self.py = px, py      # in Mpc/h
+            self.N = self.shear_map.N
             self.bin_size = bin_size
         return shear_map      
 

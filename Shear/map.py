@@ -93,7 +93,7 @@ def _map_per_lens(j, dict_per_lens):
 
 # ============================================================================================
 def read_map(file):
-    ''' Read profile written with Profile.write_to() method
+    ''' Read profile written with Map.write_to() method
     '''
     with fits.open(file) as f:
         mp = Map()
