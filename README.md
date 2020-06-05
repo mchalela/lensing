@@ -2,7 +2,7 @@
 
 Lensing is a set of tools to work with lensing catalogs, measure density profiles and fit compound density models. The package is divided into several modules: LensCat, DensModel, Shear, Kappa and gentools.
 
-- **LensCat**: Allows you to easily create source catalogues for your lenses. Right now the available lensing catalogues are KiDS, CS82, CFHTLens... Each catalogue has different properties so the idea is to provide a unified interface and namespace for all of them. [Read more](LensCat/README.md)
+- **LensCat**: Allows you to easily create source catalogues for your lenses. Right now the available lensing catalogues are KiDS, CS82, CFHTLens and RCSL. Each catalogue has different properties so the idea is to provide a unified interface and namespace for all of them. [Read more](LensCat/README.md)
 
 - **Shear**: Provides a few methods to compute shear profiles and maps. [Read more](Shear/README.md)
 
