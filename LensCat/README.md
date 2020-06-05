@@ -25,65 +25,44 @@ R_deg = gentools.Mpc2deg(R_Mpc=R_Mpc, z=df['z'], cosmo=cosmo)
 
 # Search for galaxies in the survey you want, and append your lens catalogue.
 # You can lunch a parallel search in njobs.
-cs82_cat = LensCat.CS82.bubble_neighbors(centre=df[['RA','DEC']], radii=R_deg, append_data=df, njobs=40)
-kids_cat = LensCat.KiDS.bubble_neighbors(centre=df[['RA','DEC']], radii=R_deg, append_data=df, njobs=40)
-cfht_cat = LensCat.CFHT.bubble_neighbors(centre=df[['RA','DEC']], radii=R_deg, append_data=df, njobs=40)
+cs82_cat = LensCat.CS82.find_neighbors(centre=df[['RA','DEC']], upper_radii=R_deg, append_data=df, compressed=True)
+kids_cat = LensCat.KiDS.find_neighbors(centre=df[['RA','DEC']], upper_radii=R_deg, append_data=df, compressed=True)
+cfht_cat = LensCat.CFHT.find_neighbors(centre=df[['RA','DEC']], upper_radii=R_deg, append_data=df, compressed=True)
 ```
 
-And thats it! You can save your catalogues individually or you can add them in a single catalogue.
+And thats it! Take note of the compressed=True argument. When set to True the resulting catalogue will have two catalogues within it, named .data_L and .data_S. If set to False it will only make one expanded catalogue named .data. For larga catalogues it's better to set it as True and save a lot of memory usage.
+
+Now you can save your individual catalogues.
 ```python
 cs82_cat.write_to('gx_CS82.fits')
 kids_cat.write_to('gx_KiDS.fits')
 cfht_cat.write_to('gx_CFHT.fits')
+```
 
-# Or, you can add them and then save the file.
+Or, you can combine them and then save the file. There are two operators defined for compressed catalogues: and '&', and sum '+'. Combining with '&' will result in a direct concatenation of catalogues. Combining with '+' will discard repeated lenses priorizing the catalog on the left side. For example:
+```python
 cat = cs82_cat + kids_cat + cfht_cat
 cat.write_to('gx_'+cat.name+'.fits')
 ```
+This will combine catalogues checking removing lenses from kids (if it is in cs82) and from cfht (if it is in kids or cs82).
 
 ### Load different columns
-That was the easy way. By default, if you search for galaxies directly with the **bubble_neighbors()** method you will load only these columns from the catalogues: RAJ2000, DECJ2000, Z_B, e1, e2, m, weight, ODDS, fitclass, MASK. And in particular, the CFHTLens catalogue will also load the c2 additive bias column, correct the e2 component of ellipticity and drop the c2 column from the catalogue, thats why you wont see it.
+That was the easy way. By default, if you search for galaxies directly with the **find_neighbors()** method you will load only these columns from the catalogues: RAJ2000, DECJ2000, Z_B, e1, e2, m, weight, ODDS, fitclass, MASK. And in particular, the CFHTLens catalogue will also load the c2 additive bias column, correct the e2 component of ellipticity and drop the c2 column from the catalogue, thats why you wont see it.
 
 This is because the catalogue needs to be loaded in memory first with the **load(fields=None, columns=None, science_cut=True)** method. If you don't load the catalogue before searching for galaxies, it will be loaded automatically with those default columns. You can control what columns and fields are loaded.
 ```python
 # Lets say you want from the CS82 those columns and also the BPZ_LOW95
 columns = ['RAJ2000','DECJ2000','Z_B','e1','e2','m','weight','ODDS','fitclass','MASK', 'BPZ_LOW95']
 LensCat.CS82.load(columns=columns)
-cs82_cat = LensCat.CS82.bubble_neighbors(centre=df[['RA','DEC']], radii=R_deg, append_data=df, njobs=40)
+cs82_cat = LensCat.CS82.find_neighbors(centre=df[['RA','DEC']], upper_radii=R_deg, append_data=df, njobs=40)
 
 # Or lets say you want from the KiDS catalogue the default columns, but
 # only in the G9 and G12 fields.
 LensCat.KiDS.load(fields=['G9','G12'])
-kids_cat = LensCat.KiDS.bubble_neighbors(centre=df[['RA','DEC']], radii=R_deg, append_data=df, njobs=40)
+kids_cat = LensCat.KiDS.find_neighbors(centre=df[['RA','DEC']], upper_radii=R_deg, append_data=df, njobs=40)
 ```
 
 The science_cut will usually be True, and it gives you all the galaxies with **fitclass=0**, **MASK<=1** and **weight>0**. So if you want these cut you need to load these columns. For the CFHT in particular, the c2 column must be loaded.
-
-### Recommendations
-These are things you probably want and should be class methods, but for now you have to do it manually...
-
-You may want to apply some cuts before saving your catalogues to a file, like removing foreground galaxies.
-```python
-mask = cs82_cat.data['Z_B']>cs82_cat.data['z']
-cs82_cat.data = cs82_cat.data[mask]
-# Note: this will be a method soon. cs82_cat.remove_foregrounds()
-```
-
-If you want to save your catalogue to be used with the Shear or Kappa modules, you need to compute the angular diameter distances for the lensing analysis. For example:
-```python
-DL = np.array(cosmo.angular_diameter_distance(cs82_cat.data['z']))
-DS = np.array(cosmo.angular_diameter_distance(cs82_cat.data['Z_B']))
-DLS= np.array(cosmo.angular_diameter_distance_z1z2(cs82_cat.data['z'], cs82_cat.data['Z_B']))
-
-# Save the columns after the IDLENS column. Omit the index if you dont care about the order
-index = cs82_cat.data.columns.get_loc('IDLENS')
-cs82_cat.add_column(index=index, name='DLS', data=DLS)
-cs82_cat.add_column(index=index, name='DL', data=DL)
-cs82_cat.add_column(index=index, name='DS', data=DS)
-
-# Now you have what you need for Shear and Kappa
-cs82_cat.write_to('gx_CS82.fits')
-```
 
 ## Catalogue Format
 
