@@ -45,6 +45,19 @@ def digitize(data, bins):
     digit = (N * (data - bins[0]) / (bins[-1] - bins[0])).astype(np.int)
     return digit
 
+def skycoord_average(ra, dec):
+    """Compute the mean position of points in a sphere."""
+    from astropy import units as u 
+    from astropy.coordinates import SkyCoord
+
+    pos = SkyCoord(ra*u.deg, dec*u.deg, frame='icrs')
+    car = pos.cartesian.mean()
+    new = SkyCoord(car)
+    ra_mean = new.ra.value
+    dec_mean = new.dec.value
+    return ra_mean, dec_mean
+
+
 # General tools for the lensing module
 class classonly(classmethod):
     def __get__(self, obj, type):
