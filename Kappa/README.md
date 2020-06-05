@@ -1,7 +1,7 @@
 # Kappa: Module to compute 2D density maps
 
 ## Map
-To compute the shear map this module uses the data_L, data_S DataFrame from the LensCat catalogue. Let's say you have already generated the catalogue and saved it to a file.
+This is a Kaiser-Squires reconstruction of the density field. We follow the equations from Jeffrey et al 2018, section 2.2 (arxiv.org/pdf/1801.08945.pdf). To compute the kappa map this module uses the data_L, data_S DataFrame from the LensCat catalogue. Let's say you have already generated the catalogue and saved it to a file.
 
 ```python
 from lensing import LensCat, Kappa
