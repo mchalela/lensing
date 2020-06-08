@@ -283,7 +283,7 @@ class CompressedMap(Map):
     '''
 
     def __init__(self, data_L, data_S, nbins=None, box_size_hMpc=None, nboot=0, cosmo=cosmo,
-        back_dz=0.1, precomputed_distances=True, njobs=1, mirror=None):
+        back_dz=0.1, precomputed_distances=True, njobs=1, mirror=None, rotate=None):
 
         super().__init__(nbins=nbins, box_size_hMpc=box_size_hMpc, cosmo=cosmo, back_dz=back_dz)
 
@@ -291,6 +291,7 @@ class CompressedMap(Map):
         self.precomputed_distances = precomputed_distances
         self.nboot = nboot
         self.mirror = mirror
+        self.rotate = rotate
 
         # Compute shear map
         shear_map = self._shear_map(data_L, data_S, save_shear_map=True)
@@ -303,7 +304,7 @@ class CompressedMap(Map):
 
         shear_map = Shear.CompressedMap(data_L=data_L, data_S=data_S, nbins=self.nbins, 
             mirror=self.mirror, box_size_hMpc=self.box_size_hMpc,
-            cosmo=self.cosmo, back_dz=self.back_dz, 
+            cosmo=self.cosmo, back_dz=self.back_dz, rotate=self.rotate,
             precomputed_distances=self.precomputed_distances, njobs=self.njobs)
         # Save shear map for reference
         if save_shear_map:

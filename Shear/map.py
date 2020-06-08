@@ -38,6 +38,7 @@ def _map_per_lens(j, dict_per_lens):
     data_S = dict_per_lens['data_S']
     bins = dict_per_lens['bins']
     back_dz = dict_per_lens['back_dz']
+    rotate = dict_per_lens['rotate']
     nbins = len(bins)-1
     #cosmo = dict_per_lens['cosmo']
 
@@ -62,6 +63,14 @@ def _map_per_lens(j, dict_per_lens):
     theta += 90. 
     dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # radial distance to the lens centre in Mpc/h
 
+    # Rotation, if needed
+    if rotate is not None:
+        rot_angle = dL[rotate] + 90.
+        theta -= rot_angle # align to the X axis
+        e1, e2 = gentools.polar_rotation(dS['e1'].values, dS['e2'].values, theta=np.deg2rad(rot_angle))
+    else:
+        e1, e2 = dS['e1'].values, dS['e2'].values
+
     px = dist_hMpc * np.cos(np.deg2rad(theta))
     py = dist_hMpc * np.sin(np.deg2rad(theta))
 
@@ -71,7 +80,7 @@ def _map_per_lens(j, dict_per_lens):
     dict_per_bin = {'m': dS['m'].values, 'weight': dS['weight'].values,
                     'digit_x': digit_x, 'digit_y': digit_y, 
                     'sigma_critic': sigma_critic,
-                    'e1': dS['e1'].values, 'e2': dS['e2'].values}
+                    'e1': e1, 'e2': e2}
 
     xshape = (nbins, nbins)
     x = {'shear1_j': np.zeros(xshape), 'shear2_j': np.zeros(xshape),
@@ -184,13 +193,14 @@ class Map(object):
 @gentools.timer
 class CompressedMap(Map):
 
-    def __init__(self, data_L, data_S, nbins=10, box_size_hMpc=0.5, mirror=None,
+    def __init__(self, data_L, data_S, nbins=10, box_size_hMpc=0.5, mirror=None, rotate=None,
         cosmo=cosmo, back_dz=0.1, precomputed_distances=True, njobs=1):
 
         super().__init__(nbins=nbins, box_size_hMpc=box_size_hMpc, cosmo=cosmo, back_dz=back_dz)
 
         self.njobs = njobs
         self.precomputed_distances = precomputed_distances
+        self.mirror = mirror
 
         if data_S.index.name is not 'CATID':
             data_S_indexed = data_S.set_index('CATID')
@@ -219,7 +229,7 @@ class CompressedMap(Map):
         ''' Computes map for CompressedCatalog
         '''
         dict_per_lens = {'data_L': data_L, 'data_S': data_S, 
-                        'bins': self.bins, 'back_dz': self.back_dz}
+                        'bins': self.bins, 'back_dz': self.back_dz, 'rotate': self.rotate}
 
         # Compute maps per lens
         with Parallel(n_jobs=self.njobs, require='sharedmem') as parallel:
