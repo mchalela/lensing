@@ -201,6 +201,7 @@ class CompressedMap(Map):
         self.njobs = njobs
         self.precomputed_distances = precomputed_distances
         self.mirror = mirror
+        self.rotate = rotate
 
         if data_S.index.name is not 'CATID':
             data_S_indexed = data_S.set_index('CATID')
