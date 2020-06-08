@@ -42,7 +42,10 @@ def _map_per_lens(j, dict_per_lens):
     #cosmo = dict_per_lens['cosmo']
 
     dL = data_L.iloc[j]
-    dS = data_S.loc[dL['CATID']]
+    try:
+        dS = data_S.loc[dL['CATID']]
+    except Exception as e:
+        dS = data_S.reindex[dL['CATID']].dropna()
     #if back_dz != 0.:
     mask_dz = dS['Z_B'].values >= dL['Z'] + back_dz
     dS = dS[mask_dz]
