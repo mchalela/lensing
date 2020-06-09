@@ -34,6 +34,7 @@ def _map_per_bin(mask, dict_per_bin):
     return x
 
 def _map_per_lens(j, dict_per_lens):
+    print(j)
     data_L = dict_per_lens['data_L']
     data_S = dict_per_lens['data_S']
     bins = dict_per_lens['bins']
