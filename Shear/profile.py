@@ -90,7 +90,7 @@ def _profile_per_lens(j, dict_per_lens):
 	#theta += 90. 
 	dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # radial distance to the lens centre in Mpc/h
 	neg_et, ex = gentools.polar_rotation(dS['e1'].values, -dS['e2'].values, -np.deg2rad(90-theta))
-	et -= neg_et
+	et = -neg_et
 
 	digit = np.digitize(dist_hMpc, bins=bins)-1
 		
