@@ -68,7 +68,7 @@ def _map_per_lens(j, dict_per_lens):
     if rotate is not None:
         rot_angle = 90 - dL[rotate] #+ 90.
         theta = 90 - theta - rot_angle # align to the X axis
-        e1, e2 = gentools.polar_rotation(-dS['e1'].values, -dS['e2'].values, theta=-np.deg2rad(rot_angle))
+        e1, e2 = gentools.polar_rotation(dS['e1'].values, -dS['e2'].values, theta=-np.deg2rad(rot_angle))
     else:
         theta = 90. - theta
         e1, e2 = dS['e1'].values, -dS['e2'].values
