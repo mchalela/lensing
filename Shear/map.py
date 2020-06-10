@@ -34,7 +34,7 @@ def _map_per_bin(mask, dict_per_bin):
     return x
 
 def _map_per_lens(j, dict_per_lens):
-    print(j)
+    #print(j)
     data_L = dict_per_lens['data_L']
     data_S = dict_per_lens['data_S']
     bins = dict_per_lens['bins']
@@ -61,16 +61,17 @@ def _map_per_lens(j, dict_per_lens):
     # Compute distance and ellipticity components...
     dist, theta = gentools.sphere_angular_vector(dS['RAJ2000'].values, dS['DECJ2000'].values,
                                                 dL['RA'], dL['DEC'], units='deg')
-    theta += 90. 
+    #theta += 90. 
     dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # radial distance to the lens centre in Mpc/h
 
     # Rotation, if needed
     if rotate is not None:
-        rot_angle = dL[rotate] + 90.
-        theta -= rot_angle # align to the X axis
-        e1, e2 = gentools.polar_rotation(dS['e1'].values, dS['e2'].values, theta=np.deg2rad(rot_angle))
+        rot_angle = 90 - dL[rotate] #+ 90.
+        theta = 90 - theta - rot_angle # align to the X axis
+        e1, e2 = gentools.polar_rotation(-dS['e1'].values, -dS['e2'].values, theta=-np.deg2rad(rot_angle))
     else:
-        e1, e2 = dS['e1'].values, dS['e2'].values
+        theta = 90. - theta
+        e1, e2 = dS['e1'].values, -dS['e2'].values
 
     px = dist_hMpc * np.cos(np.deg2rad(theta))
     py = dist_hMpc * np.sin(np.deg2rad(theta))

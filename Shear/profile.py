@@ -87,9 +87,10 @@ def _profile_per_lens(j, dict_per_lens):
 	# Compute distance and ellipticity components...
 	dist, theta = gentools.sphere_angular_vector(dS['RAJ2000'].values, dS['DECJ2000'].values,
 												dL['RA'], dL['DEC'], units='deg')
-	theta += 90. 
+	#theta += 90. 
 	dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # radial distance to the lens centre in Mpc/h
-	et, ex = gentools.polar_rotation(dS['e1'].values, dS['e2'].values, np.deg2rad(theta))
+	neg_et, ex = gentools.polar_rotation(dS['e1'].values, -dS['e2'].values, -np.deg2rad(90-theta))
+	et -= neg_et
 
 	digit = np.digitize(dist_hMpc, bins=bins)-1
 		
