@@ -149,7 +149,7 @@ class Profile(object):
 		self.nboot = nboot
 		self.back_dz = back_dz
 
-		self.bins = gentools.make_bins(rin_hMpc, rout_hMpc, nbins=bins, space=space)
+		self.bins = gentools.make_bins(rin_hMpc, rout_hMpc, nbins=nbins, space=space)
 		self.nbins = nbins
 		self.rin_hMpc  = self.bins[0]
 		self.rout_hMpc = self.bins[-1]
