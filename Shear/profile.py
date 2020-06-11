@@ -312,8 +312,8 @@ class CompressedProfile(Profile):
 		self.njobs = njobs
 		self.precomputed_distances = precomputed_distances
 
-        if colnames is None: colnames = {'RA': 'RA', 'DEC': 'DEC', 'Z': 'Z'}
-        self.colnames = colnames
+		if colnames is None: colnames = {'RA': 'RA', 'DEC': 'DEC', 'Z': 'Z'}
+		self.colnames = colnames
 
 		if data_S.index.name is not 'CATID':
 			data_S_indexed = data_S.set_index('CATID')
