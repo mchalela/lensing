@@ -67,6 +67,7 @@ def _profile_per_lens(j, dict_per_lens):
 	back_dz = dict_per_lens['back_dz']
 	nboot = dict_per_lens['nboot']
 	precomp_dist = dict_per_lens['precomputed_distances']
+	dN = dict_per_lens['colnames']
 	#cosmo = dict_per_lens['cosmo']
 
 	dL = data_L.iloc[j]
@@ -75,10 +76,10 @@ def _profile_per_lens(j, dict_per_lens):
 	except Exception as e:
 		dS = data_S.reindex(dL['CATID']).dropna()
 	#if back_dz != 0.:
-	mask_dz = dS['Z_B'].values >= dL['Z'] + back_dz
+	mask_dz = dS['Z_B'].values >= dL[dN['Z']] + back_dz
 	dS = dS[mask_dz]
 
-	DD = gentools.compute_lensing_distances(zl=dL['Z'], zs=dS['Z_B'].values,
+	DD = gentools.compute_lensing_distances(zl=dL[dN['Z']], zs=dS['Z_B'].values,
 		precomputed=precomp_dist, cache=True)#, cosmo=self.cosmo)
 
 	Mpc_scale = gentools.Mpc_scale(dl=DD['DL'])
@@ -86,7 +87,7 @@ def _profile_per_lens(j, dict_per_lens):
 	
 	# Compute distance and ellipticity components...
 	dist, theta = gentools.sphere_angular_vector(dS['RAJ2000'].values, dS['DECJ2000'].values,
-												dL['RA'], dL['DEC'], units='deg')
+												dL[dN['RA']], dL[dN['DEC']], units='deg')
 	#theta += 90. 
 	dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # radial distance to the lens centre in Mpc/h
 	neg_et, ex = gentools.polar_rotation(dS['e1'].values, -dS['e2'].values, -np.deg2rad(90-theta))
@@ -301,7 +302,7 @@ class ExpandedProfile(Profile):
 class CompressedProfile(Profile):
 
 	def __init__(self, data_L, data_S, rin_hMpc=0.1, rout_hMpc=10., nbins=10, space='log',
-		nboot=0, cosmo=cosmo, back_dz=0., precomputed_distances=True, njobs=1):
+		nboot=0, cosmo=cosmo, back_dz=0., precomputed_distances=True, njobs=1, colnames=None):
 		
 		#if not isinstance(cat, (CompressedCatalog, ExpandedCatalog)):
 		#	raise TypeError('cat must be a LensCat catalog.')
@@ -310,6 +311,9 @@ class CompressedProfile(Profile):
 
 		self.njobs = njobs
 		self.precomputed_distances = precomputed_distances
+
+        if colnames is None: colnames = {'RA': 'RA', 'DEC': 'DEC', 'Z': 'Z'}
+        self.colnames = colnames
 
 		if data_S.index.name is not 'CATID':
 			data_S_indexed = data_S.set_index('CATID')
@@ -329,7 +333,7 @@ class CompressedProfile(Profile):
 		''' Computes profile for CompressedCatalog
 		'''
 		dict_per_lens = {'data_L': data_L, 'data_S': data_S, 
-						'bins': self.bins, 'back_dz': self.back_dz, 
+						'bins': self.bins, 'back_dz': self.back_dz, 'colnames': self.colnames,
 						'nboot': self.nboot, 'precomputed_distances': self.precomputed_distances}
 
 		# Compute profiles per lens

@@ -40,6 +40,7 @@ def _map_per_lens(j, dict_per_lens):
     bins = dict_per_lens['bins']
     back_dz = dict_per_lens['back_dz']
     rotate = dict_per_lens['rotate']
+    dN = dict_per_lens['colnames']
     nbins = len(bins)-1
     #cosmo = dict_per_lens['cosmo']
 
@@ -49,10 +50,10 @@ def _map_per_lens(j, dict_per_lens):
     except Exception as e:
         dS = data_S.reindex(dL['CATID']).dropna()
     #if back_dz != 0.:
-    mask_dz = dS['Z_B'].values >= dL['Z'] + back_dz
+    mask_dz = dS['Z_B'].values >= dL[dN['Z']] + back_dz
     dS = dS[mask_dz]
 
-    DD = gentools.compute_lensing_distances(zl=dL['Z'], zs=dS['Z_B'].values,
+    DD = gentools.compute_lensing_distances(zl=dL[dN['Z']], zs=dS['Z_B'].values,
         precomputed=True, cache=True)#, cosmo=self.cosmo)
 
     Mpc_scale = gentools.Mpc_scale(dl=DD['DL'])
@@ -60,7 +61,7 @@ def _map_per_lens(j, dict_per_lens):
     
     # Compute distance and ellipticity components...
     dist, theta = gentools.sphere_angular_vector(dS['RAJ2000'].values, dS['DECJ2000'].values,
-                                                dL['RA'], dL['DEC'], units='deg')
+                                                dL[dN['RA']], dL[dN['DEC']], units='deg')
     #theta += 90. 
     dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # radial distance to the lens centre in Mpc/h
 
@@ -196,7 +197,7 @@ class Map(object):
 class CompressedMap(Map):
 
     def __init__(self, data_L, data_S, nbins=10, box_size_hMpc=0.5, mirror=None, rotate=None,
-        cosmo=cosmo, back_dz=0.1, precomputed_distances=True, njobs=1):
+        cosmo=cosmo, back_dz=0.1, precomputed_distances=True, njobs=1, colnames=None):
 
         super().__init__(nbins=nbins, box_size_hMpc=box_size_hMpc, cosmo=cosmo, back_dz=back_dz)
 
@@ -204,6 +205,9 @@ class CompressedMap(Map):
         self.precomputed_distances = precomputed_distances
         self.mirror = mirror
         self.rotate = rotate
+
+        if colnames is None: colnames = {'RA': 'RA', 'DEC': 'DEC', 'Z': 'Z'}
+        self.colnames = colnames
 
         if data_S.index.name is not 'CATID':
             data_S_indexed = data_S.set_index('CATID')
@@ -232,7 +236,8 @@ class CompressedMap(Map):
         ''' Computes map for CompressedCatalog
         '''
         dict_per_lens = {'data_L': data_L, 'data_S': data_S, 
-                        'bins': self.bins, 'back_dz': self.back_dz, 'rotate': self.rotate}
+                        'bins': self.bins, 'back_dz': self.back_dz,
+                        'rotate': self.rotate, 'colnames': self.colnames}
 
         # Compute maps per lens
         with Parallel(n_jobs=self.njobs, require='sharedmem') as parallel:
