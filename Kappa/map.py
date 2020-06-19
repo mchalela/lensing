@@ -38,6 +38,7 @@ def read_map(file):
         dx = mp.px[0,1]-mp.px[0,0]
         mp.bin_size = (dx, dx)
     return mp
+    
 
 class Map(object):
     '''
@@ -45,12 +46,12 @@ class Map(object):
     We follow the equations from Jeffrey et al 2018, section 2.2
     arxiv.org/pdf/1801.08945.pdf
     '''    
-    def __init__(self, nbins=None, box_size_hMpc=None, cosmo=None, back_dz=None):
+    def __init__(self, nbins=None, box_size=None, cosmo=None, back_dz=None):
     
         self.nbins = nbins
         self.cosmo = cosmo
         self.back_dz = back_dz
-        self.box_size_hMpc = box_size_hMpc
+        self.box_size = box_size
         self._T_Dconj = None
 
         self.px, self.py = None, None
@@ -83,9 +84,10 @@ class Map(object):
         '''
         dx = self.bin_size[0]
         dy = self.bin_size[1]
+        nbins = self.px.shape[0]
 
         # create fourier grid
-        k_x0, k_y0 = fftpack.fftfreq(self.nbins, d=dx), fftpack.fftfreq(self.nbins, d=dy)
+        k_x0, k_y0 = fftpack.fftfreq(nbins, d=dx), fftpack.fftfreq(nbins, d=dy)
         kx, ky = np.meshgrid(k_x0, k_y0, indexing='xy')
 
         T_Dconj = (kx**2 - ky**2 - 2j*kx*ky) / (kx**2 + ky**2)  # for k!=0
@@ -274,6 +276,7 @@ class ExpandedMap(Map):
         error_map = kE_err + 1j*kB_err
         return error_map
 
+
 @gentools.timer
 class CompressedMap(Map):
     '''
@@ -282,11 +285,12 @@ class CompressedMap(Map):
     arxiv.org/pdf/1801.08945.pdf
     '''
 
-    def __init__(self, data_L, data_S, nbins=None, box_size_hMpc=None, nboot=0, cosmo=cosmo,
+    def __init__(self, data_L, data_S, scale=None, nbins=None, box_size=None, nboot=0, cosmo=cosmo,
         back_dz=0.1, precomputed_distances=True, njobs=1, mirror=None, rotate=None, colnames=None):
 
-        super().__init__(nbins=nbins, box_size_hMpc=box_size_hMpc, cosmo=cosmo, back_dz=back_dz)
+        super().__init__(nbins=nbins, box_size=box_size, cosmo=cosmo, back_dz=back_dz)
 
+        self.scale = scale
         self.njobs = njobs
         self.precomputed_distances = precomputed_distances
         self.nboot = nboot
@@ -305,10 +309,11 @@ class CompressedMap(Map):
 
     def _shear_map(self, data_L, data_S, save_shear_map=True):
 
-        shear_map = Shear.CompressedMap(data_L=data_L, data_S=data_S, nbins=self.nbins, 
-            mirror=self.mirror, box_size_hMpc=self.box_size_hMpc, colnames=self.colnames,
+        shear_map = Shear.ScaledMap(data_L=data_L, data_S=data_S, scale=self.scale, nbins=self.nbins, 
+            mirror=self.mirror, box_size_scaled=self.box_size_scaled, colnames=self.colnames,
             cosmo=self.cosmo, back_dz=self.back_dz, rotate=self.rotate,
             precomputed_distances=self.precomputed_distances, njobs=self.njobs)
+
         # Save shear map for reference
         if save_shear_map:
             px = shear_map.px      # in Mpc/h
@@ -324,8 +329,8 @@ class CompressedMap(Map):
 
     def _error_map(self, data_L, data_S):
 
-        if self.box_size_hMpc is None:
-                raise ValueError('You need to specify a box_size_hMpc value '
+        if self.box_size_scaled is None:
+                raise ValueError('You need to specify a box_size_scaled value '
                     'for the bootstrap analysis.')
 
         cube_shape = self.kappa.shape + (self.nboot, )    # add extra dimension for each map
@@ -355,3 +360,28 @@ class CompressedMap(Map):
 
 
 
+
+class fromShearMap(Map):
+    '''
+    Kaiser-Squires reconstruction
+    We follow the equations from Jeffrey et al 2018, section 2.2
+    arxiv.org/pdf/1801.08945.pdf
+    '''
+    def __init__(self, shear_map):
+
+        super().__init__()
+
+        self.shear_map = shear_map
+        self.N = self.shear_map.N
+        self.px = shear_map.px      # in Mpc/h
+        self.py = shear_map.py      # in Mpc/h
+        dx = self.px[0, 1] - self.px[0, 0]  
+        dy = self.py[1, 0] - self.py[0, 0]
+        bin_size = (dx, dy)    # in Mpc/h
+        self.bin_size = bin_size
+
+
+        # Compute kappa and error map from the shear map
+        self.kappa = self._kappa_map(self.shear_map)
+        #if self.nboot>0:
+        #    self.kappa_err = self._error_map(data_L, data_S)

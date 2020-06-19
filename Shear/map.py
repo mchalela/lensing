@@ -37,6 +37,7 @@ def _map_per_lens(j, dict_per_lens):
     #print(j)
     data_L = dict_per_lens['data_L']
     data_S = dict_per_lens['data_S']
+    scale = dict_per_lens['scale']
     bins = dict_per_lens['bins']
     back_dz = dict_per_lens['back_dz']
     rotate = dict_per_lens['rotate']
@@ -62,8 +63,9 @@ def _map_per_lens(j, dict_per_lens):
     # Compute distance and ellipticity components...
     dist, theta = gentools.sphere_angular_vector(dS['RAJ2000'].values, dS['DECJ2000'].values,
                                                 dL[dN['RA']], dL[dN['DEC']], units='deg')
-    #theta += 90. 
     dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # radial distance to the lens centre in Mpc/h
+    if scale is not None:
+        dist_hMpc /= dL[scale]
 
     # Rotation, if needed
     if rotate is not None:
@@ -116,28 +118,32 @@ def read_map(file):
         mp = Map()
         mp.px = f['px'].data
         mp.py = f['py'].data
-        mp.shearx = f['shearx'].data
-        mp.sheary = f['sheary'].data
         mp.shear = f['shear'].data
         mp.beta = f['beta'].data
         mp.stat_err = f['stat_error'].data
         mp.N = f['N'].data
+        # Complete variables
+        mp.shearx = mp.shear * np.cos(mp.beta)
+        mp.sheary = mp.shear * np.sin(mp.beta)
+        mp.shear1 = mp.shear * np.cos(2*mp.beta)
+        mp.shear2 = mp.shear * np.sin(2*mp.beta)
     return mp
 
 
 class Map(object):
 
-    def __init__(self, nbins=None, box_size_hMpc=None, cosmo=None, back_dz=None):
+    def __init__(self, nbins=None, box_size=None, cosmo=None, back_dz=None):
 
         self.cosmo = cosmo
         self.back_dz = back_dz
         self.nbins = nbins
-        self.box_size_hMpc = box_size_hMpc
+        self.box_size = box_size
         if box_size_hMpc is not None:
-            self.bins = gentools.make_bins(-box_size_hMpc/2., box_size_hMpc/2., nbins=nbins, space='lin') 
+            self.bins = gentools.make_bins(-box_size/2., box_size/2., nbins=nbins, space='lin') 
 
         self.px, self.py = None, None
         self.shearx, self.sheary = None, None
+        self.shear1, self.shear2 = None, None
         self.shear, self.beta = None, None
         self.stat_error = None
         self.N = None
@@ -186,7 +192,7 @@ class Map(object):
                 raise IOError('File already exist. You may want to use overwrite=True.')
         
         hdulist = [fits.PrimaryHDU()]
-        for atr in ['px', 'py', 'shearx', 'sheary', 'shear', 'beta', 'stat_error', 'N']:
+        for atr in ['px', 'py', 'shear', 'beta', 'stat_error', 'N']:
             hdulist.append(fits.ImageHDU(self.__getitem__(atr), name=atr))
         hdulist = fits.HDUList(hdulist)
         hdulist.writeto(file, overwrite=overwrite)
@@ -196,15 +202,15 @@ class Map(object):
 @gentools.timer
 class CompressedMap(Map):
 
-    def __init__(self, data_L, data_S, nbins=10, box_size_hMpc=0.5, mirror=None, rotate=None,
+    def __init__(self, data_L, data_S, scale=None, nbins=10, box_size=0.5, rotate=None,
         cosmo=cosmo, back_dz=0.1, precomputed_distances=True, njobs=1, colnames=None):
 
-        super().__init__(nbins=nbins, box_size_hMpc=box_size_hMpc, cosmo=cosmo, back_dz=back_dz)
+        super().__init__(nbins=nbins, box_size=box_size, cosmo=cosmo, back_dz=back_dz)
 
         self.njobs = njobs
         self.precomputed_distances = precomputed_distances
-        self.mirror = mirror
         self.rotate = rotate
+        self.scale = scale
 
         if colnames is None: colnames = {'RA': 'RA', 'DEC': 'DEC', 'Z': 'Z'}
         self.colnames = colnames
@@ -214,8 +220,8 @@ class CompressedMap(Map):
 
         mp = self._map(data_L=data_L, data_S=data_S_indexed)
         mp = self._accum(mp)
-        if mirror is not None:
-            mp = self._mirror(mp, mirror=mirror)
+        #if mirror is not None:
+        #    mp = self._mirror(mp, mirror=mirror)
         mp = self._reduce(mp)
         mp = self._cartesian(mp)
 
@@ -235,7 +241,7 @@ class CompressedMap(Map):
     def _map(self, data_L, data_S):
         ''' Computes map for CompressedCatalog
         '''
-        dict_per_lens = {'data_L': data_L, 'data_S': data_S, 
+        dict_per_lens = {'data_L': data_L, 'data_S': data_S, 'scale': self.scale,
                         'bins': self.bins, 'back_dz': self.back_dz,
                         'rotate': self.rotate, 'colnames': self.colnames}
 
