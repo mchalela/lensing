@@ -138,7 +138,7 @@ class Map(object):
         self.back_dz = back_dz
         self.nbins = nbins
         self.box_size = box_size
-        if box_size_hMpc is not None:
+        if box_size is not None:
             self.bins = gentools.make_bins(-box_size/2., box_size/2., nbins=nbins, space='lin') 
 
         self.px, self.py = None, None
