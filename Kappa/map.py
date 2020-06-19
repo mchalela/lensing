@@ -310,7 +310,7 @@ class CompressedMap(Map):
     def _shear_map(self, data_L, data_S, save_shear_map=True):
 
         shear_map = Shear.CompressedMap(data_L=data_L, data_S=data_S, scale=self.scale, nbins=self.nbins, 
-            mirror=self.mirror, box_size_scaled=self.box_size_scaled, colnames=self.colnames,
+            mirror=self.mirror, box_size=self.box_size, colnames=self.colnames,
             cosmo=self.cosmo, back_dz=self.back_dz, rotate=self.rotate,
             precomputed_distances=self.precomputed_distances, njobs=self.njobs)
 
