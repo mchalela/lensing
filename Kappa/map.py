@@ -38,7 +38,7 @@ def read_map(file):
         dx = mp.px[0,1]-mp.px[0,0]
         mp.bin_size = (dx, dx)
     return mp
-    
+
 
 class Map(object):
     '''
@@ -309,7 +309,7 @@ class CompressedMap(Map):
 
     def _shear_map(self, data_L, data_S, save_shear_map=True):
 
-        shear_map = Shear.ScaledMap(data_L=data_L, data_S=data_S, scale=self.scale, nbins=self.nbins, 
+        shear_map = Shear.CompressedMap(data_L=data_L, data_S=data_S, scale=self.scale, nbins=self.nbins, 
             mirror=self.mirror, box_size_scaled=self.box_size_scaled, colnames=self.colnames,
             cosmo=self.cosmo, back_dz=self.back_dz, rotate=self.rotate,
             precomputed_distances=self.precomputed_distances, njobs=self.njobs)
