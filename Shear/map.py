@@ -202,7 +202,7 @@ class Map(object):
 @gentools.timer
 class CompressedMap(Map):
 
-    def __init__(self, data_L, data_S, scale=None, nbins=10, box_size=0.5, rotate=None,
+    def __init__(self, data_L, data_S, scale=None, mirror=None, nbins=10, box_size=0.5, rotate=None,
         cosmo=cosmo, back_dz=0.1, precomputed_distances=True, njobs=1, colnames=None):
 
         super().__init__(nbins=nbins, box_size=box_size, cosmo=cosmo, back_dz=back_dz)
@@ -220,8 +220,8 @@ class CompressedMap(Map):
 
         mp = self._map(data_L=data_L, data_S=data_S_indexed)
         mp = self._accum(mp)
-        #if mirror is not None:
-        #    mp = self._mirror(mp, mirror=mirror)
+        if mirror is not None:
+            mp = self._mirror(mp, mirror=mirror)
         mp = self._reduce(mp)
         mp = self._cartesian(mp)
 
