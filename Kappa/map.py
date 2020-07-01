@@ -29,12 +29,16 @@ def read_map(file):
         mp.kappa = f['kappaE'].data + 1j*f['kappaB'].data
         mp.N = f['N'].data
         mp.shear_map = Shear.Map()
-        mp.shear_map.shearx = f['shearx'].data
-        mp.shear_map.sheary = f['sheary'].data
         mp.shear_map.shear = f['shear'].data
-        mp.shear_map.beta = f['beta'].data        
+        mp.shear_map.beta = f['beta'].data
+        mp.shear_map.stat_error = f['stat_error'].data
         mp.shear_map.px = f['px'].data
         mp.shear_map.py = f['py'].data
+        # Complete variables
+        mp.shear_map.shearx = mp.shear_map.shear * np.cos(mp.shear_map.beta)
+        mp.shear_map.sheary = mp.shear_map.shear * np.sin(mp.shear_map.beta)
+        mp.shear_map.shear1 = mp.shear_map.shear * np.cos(2*mp.shear_map.beta)
+        mp.shear_map.shear2 = mp.shear_map.shear * np.sin(2*mp.shear_map.beta)
         dx = mp.px[0,1]-mp.px[0,0]
         mp.bin_size = (dx, dx)
     return mp
@@ -100,13 +104,12 @@ class Map(object):
         km = ndimage.gaussian_filter(km, sigma=sigma_pix*resize, truncate=truncate)
         return km
 
-    def gaussian_filter(self, sigma_hkpc=10., truncate=5, resize=1, apply_to_err=False):
+    def gaussian_filter(self, sigma=10., truncate=5, resize=1, apply_to_err=False):
         ''' Apply gaussian filter to reduce high frequency noise
         resize is good for smooth plots, recomended: resize=100
         '''
-        dx = self.bin_size[0]    # pixel size in Mpc/h
-        sigma_hMpc = sigma_hkpc * 1e-3
-        sigma_pix = sigma_hMpc/dx
+        dx = self.bin_size[0]    # pixel size in Mpc/h or sacled
+        sigma_pix = sigma/dx
 
         kE = self._resize_and_smooth(self.kappa.real, resize, sigma_pix, truncate)
         kB = self._resize_and_smooth(self.kappa.imag, resize, sigma_pix, truncate)
@@ -146,16 +149,16 @@ class Map(object):
         plt.show()
         return None
 
-    def QuickPlot(self, sigma_hkpc=0., resize=1, plot_err=False, cmap='jet'):
+    def QuickPlot(self, sigma=0., resize=1, plot_err=False, cmap='jet'):
         ''' Plot the reconstructed kappa map.
         '''
-        if sigma_hkpc>0:
+        if sigma>0:
             if plot_err:
-                k, k_err = self.gaussian_filter(sigma_hkpc, resize=resize, apply_to_err=True)
+                k, k_err = self.gaussian_filter(sigma, resize=resize, apply_to_err=True)
                 kE, kB = k.real, k.imag
                 kE_err, kB_err = k_err.real, k_err.imag
             else:
-                k = self.gaussian_filter(sigma_hkpc, resize=resize)
+                k = self.gaussian_filter(sigma, resize=resize)
                 kE, kB = k.real, k.imag                
         else:
             if plot_err:
@@ -195,8 +198,7 @@ class Map(object):
         # Save shear map data
         hdulist.append(fits.ImageHDU(self.shear_map.shear, name='shear'))
         hdulist.append(fits.ImageHDU(self.shear_map.beta, name='beta'))
-        hdulist.append(fits.ImageHDU(self.shear_map.shearx, name='shearx'))
-        hdulist.append(fits.ImageHDU(self.shear_map.sheary, name='sheary'))
+        hdulist.append(fits.ImageHDU(self.shear_map.stat_error, name='stat_error'))
         hdulist = fits.HDUList(hdulist)
         hdulist.writeto(file, overwrite=overwrite)
         return None
@@ -204,81 +206,7 @@ class Map(object):
 
 
 @gentools.timer
-class ExpandedMap(Map):
-    '''
-    Kaiser-Squires reconstruction
-    We follow the equations from Jeffrey et al 2018, section 2.2
-    arxiv.org/pdf/1801.08945.pdf
-    '''
-
-    def __init__(self, data=None, nbins=None, box_size_hMpc=None, nboot=0, cosmo=cosmo,
-        back_dz=0.1, precomputed_distances=True, njobs=1):
-
-        super().__init__(nbins=nbins, box_size_hMpc=box_size_hMpc, cosmo=cosmo, back_dz=back_dz)
-
-        self.njobs = njobs
-        self.precomputed_distances = precomputed_distances
-        self.nboot = nboot
-
-        # Compute shear map
-        shear_map = self._shear_map(data, save_shear_map=True)
-
-        # Compute kappa and error map
-        self.kappa = self._kappa_map(shear_map)
-        if self.nboot>0:
-            self.kappa_err = self._error_map(data)
-
-    def _shear_map(self, data, save_shear_map=True):
-
-        shear_map = Shear.ExpandedMap(data=data, nbins=self.nbins, 
-                                box_size_hMpc=self.box_size_hMpc, cosmo=self.cosmo, back_dz=self.back_dz, 
-                                precomputed_distances=self.precomputed_distances, njobs=self.njobs)
-        # Save shear map for reference
-        if save_shear_map:
-            px = shear_map.px      # in Mpc/h
-            py = shear_map.py      # in Mpc/h
-            dx = px[0,1]-px[0,0]  
-            dy = py[1,0]-py[0,0]
-            bin_size = (dx, dy)    # in Mpc/h
-            self.shear_map = shear_map
-            self.px, self.py = px, py      # in Mpc/h
-            self.N = self.shear_map.N
-            self.bin_size = bin_size
-        return shear_map  
-
-    def _error_map(self, data):
-
-        if self.box_size_hMpc is None:
-                raise ValueError('You need to specify a box_size_hMpc value '
-                    'for the bootstrap analysis.')
-
-        cube_shape = self.kappa.shape + (self.nboot, )    # add extra dimension for each map
-        kE_err_cube = np.zeros(cube_shape)
-        kB_err_cube = np.zeros(cube_shape)
-
-        index = np.arange(len(data))
-        with NumpyRNGContext(seed=1):
-            index_boot = bootstrap(index, self.nboot).astype(int)
-
-        for i in range(self.nboot):
-            if isinstance(data, pd.DataFrame):
-                b_data = data.iloc[i]
-            else:
-                b_data = data[i]         # assuming numpy array
-
-            b_shear = self._shear_map(b_data, save_shear_map=False)
-            b_kappa = self._kappa_map(b_shear)
-            kE_err_cube[:, :, i] = b_kappa.real
-            kB_err_cube[:, :, i] = b_kappa.imag
-
-        kE_err = np.std(kE_err_cube, axis=2)
-        kB_err = np.std(kB_err_cube, axis=2)
-        error_map = kE_err + 1j*kB_err
-        return error_map
-
-
-@gentools.timer
-class CompressedMap(Map):
+class KappaMap(Map):
     '''
     Kaiser-Squires reconstruction
     We follow the equations from Jeffrey et al 2018, section 2.2
@@ -309,7 +237,7 @@ class CompressedMap(Map):
 
     def _shear_map(self, data_L, data_S, save_shear_map=True):
 
-        shear_map = Shear.CompressedMap(data_L=data_L, data_S=data_S, scale=self.scale, nbins=self.nbins, 
+        shear_map = Shear.ShearMap(data_L=data_L, data_S=data_S, scale=self.scale, nbins=self.nbins, 
             mirror=self.mirror, box_size=self.box_size, colnames=self.colnames,
             cosmo=self.cosmo, back_dz=self.back_dz, rotate=self.rotate,
             precomputed_distances=self.precomputed_distances, njobs=self.njobs)
@@ -385,3 +313,80 @@ class fromShearMap(Map):
         self.kappa = self._kappa_map(self.shear_map)
         #if self.nboot>0:
         #    self.kappa_err = self._error_map(data_L, data_S)
+
+
+#################################################################################################
+# Deprecated
+
+@gentools.timer
+class ExpandedMap(Map):
+    '''
+    Kaiser-Squires reconstruction
+    We follow the equations from Jeffrey et al 2018, section 2.2
+    arxiv.org/pdf/1801.08945.pdf
+    '''
+
+    def __init__(self, data=None, nbins=None, box_size_hMpc=None, nboot=0, cosmo=cosmo,
+        back_dz=0.1, precomputed_distances=True, njobs=1):
+
+        super().__init__(nbins=nbins, box_size_hMpc=box_size_hMpc, cosmo=cosmo, back_dz=back_dz)
+
+        self.njobs = njobs
+        self.precomputed_distances = precomputed_distances
+        self.nboot = nboot
+
+        # Compute shear map
+        shear_map = self._shear_map(data, save_shear_map=True)
+
+        # Compute kappa and error map
+        self.kappa = self._kappa_map(shear_map)
+        if self.nboot>0:
+            self.kappa_err = self._error_map(data)
+
+    def _shear_map(self, data, save_shear_map=True):
+
+        shear_map = Shear.ExpandedMap(data=data, nbins=self.nbins, 
+                                box_size_hMpc=self.box_size_hMpc, cosmo=self.cosmo, back_dz=self.back_dz, 
+                                precomputed_distances=self.precomputed_distances, njobs=self.njobs)
+        # Save shear map for reference
+        if save_shear_map:
+            px = shear_map.px      # in Mpc/h
+            py = shear_map.py      # in Mpc/h
+            dx = px[0,1]-px[0,0]  
+            dy = py[1,0]-py[0,0]
+            bin_size = (dx, dy)    # in Mpc/h
+            self.shear_map = shear_map
+            self.px, self.py = px, py      # in Mpc/h
+            self.N = self.shear_map.N
+            self.bin_size = bin_size
+        return shear_map  
+
+    def _error_map(self, data):
+
+        if self.box_size_hMpc is None:
+                raise ValueError('You need to specify a box_size_hMpc value '
+                    'for the bootstrap analysis.')
+
+        cube_shape = self.kappa.shape + (self.nboot, )    # add extra dimension for each map
+        kE_err_cube = np.zeros(cube_shape)
+        kB_err_cube = np.zeros(cube_shape)
+
+        index = np.arange(len(data))
+        with NumpyRNGContext(seed=1):
+            index_boot = bootstrap(index, self.nboot).astype(int)
+
+        for i in range(self.nboot):
+            if isinstance(data, pd.DataFrame):
+                b_data = data.iloc[i]
+            else:
+                b_data = data[i]         # assuming numpy array
+
+            b_shear = self._shear_map(b_data, save_shear_map=False)
+            b_kappa = self._kappa_map(b_shear)
+            kE_err_cube[:, :, i] = b_kappa.real
+            kB_err_cube[:, :, i] = b_kappa.imag
+
+        kE_err = np.std(kE_err_cube, axis=2)
+        kB_err = np.std(kB_err_cube, axis=2)
+        error_map = kE_err + 1j*kB_err
+        return error_map

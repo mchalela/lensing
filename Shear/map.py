@@ -16,7 +16,7 @@ pc   = 3.085678e16  # 1 pc (m)
 Msun = 1.989e30     # Solar mass (kg)
 
 # PICKABLE functions =================================================================
-def _map_per_bin(mask, dict_per_bin):
+def _deltasigma_map_per_bin(mask, dict_per_bin):
     m = dict_per_bin['m'][mask]
     weight = dict_per_bin['weight'][mask]
     e1 = dict_per_bin['e1'][mask]
@@ -30,6 +30,25 @@ def _map_per_bin(mask, dict_per_bin):
     x['shear1_i'] = np.sum(w*e1*sigma_critic, axis=0)
     x['shear2_i'] = np.sum(w*e2*sigma_critic, axis=0)
     x['stat_error_num_i'] = np.sum( (w*0.25*sigma_critic)**2, axis=0)
+    x['sigma_critic_i'] = np.sum(w*sigma_critic, axis=0)
+    x['N_i'] = len(m)
+    return x
+
+def _shearmap_per_bin(mask, dict_per_bin):
+    m = dict_per_bin['m'][mask]
+    weight = dict_per_bin['weight'][mask]
+    e1 = dict_per_bin['e1'][mask]
+    e2 = dict_per_bin['e2'][mask]
+    sigma_critic = dict_per_bin['sigma_critic'][mask]
+
+    w = weight/sigma_critic**2
+    x = {}
+    x['accum_w_i'] = np.sum(w, axis=0)
+    x['m_cal_num_i'] = np.sum(w*(1+m), axis=0)
+    x['shear1_i'] = np.sum(w*e1, axis=0)
+    x['shear2_i'] = np.sum(w*e2, axis=0)
+    x['stat_error_num_i'] = np.sum( (w*0.25)**2, axis=0)
+    x['sigma_critic_i'] = np.sum(w*sigma_critic, axis=0)
     x['N_i'] = len(m)
     return x
 
@@ -42,6 +61,7 @@ def _map_per_lens(j, dict_per_lens):
     back_dz = dict_per_lens['back_dz']
     rotate = dict_per_lens['rotate']
     dN = dict_per_lens['colnames']
+    map_flag = dict_per_lens['map_flag']
     nbins = len(bins)-1
     #cosmo = dict_per_lens['cosmo']
 
@@ -90,7 +110,8 @@ def _map_per_lens(j, dict_per_lens):
     xshape = (nbins, nbins)
     x = {'shear1_j': np.zeros(xshape), 'shear2_j': np.zeros(xshape),
          'accum_w_j': np.zeros(xshape), 'm_cal_num_j': np.zeros(xshape),
-         'stat_error_num_j': np.zeros(xshape), 'N_j': np.zeros(xshape)}
+         'stat_error_num_j': np.zeros(xshape), 'N_j': np.zeros(xshape),
+         'sigma_critic_j': np.zeros(xshape)}
 
     # Accumulate the ellipticities.
     for ix in range(nbins):
@@ -99,12 +120,16 @@ def _map_per_lens(j, dict_per_lens):
             masky = digit_y==iy
             mask = maskx*masky
             if mask.sum()==0: continue
-            mp = _map_per_bin(mask, dict_per_bin)
+            if map_flag == 'deltasigma':
+                mp = _deltasigma_map_per_bin(mask, dict_per_bin)
+            else:
+                mp = _shearmap_per_bin(mask, dict_per_bin)
             x['shear1_j'][iy, ix] = mp['shear1_i']
             x['shear2_j'][iy, ix] = mp['shear2_i']
             x['accum_w_j'][iy, ix] = mp['accum_w_i']
             x['m_cal_num_j'][iy, ix] = mp['m_cal_num_i']
             x['stat_error_num_j'][iy, ix] = mp['stat_error_num_i']
+            x['sigma_critic_j'][iy, ix] = mp['sigma_critic_i']
             x['N_j'][iy, ix] = mp['N_i']
     return x
 
@@ -120,7 +145,7 @@ def read_map(file):
         mp.py = f['py'].data
         mp.shear = f['shear'].data
         mp.beta = f['beta'].data
-        mp.stat_err = f['stat_error'].data
+        mp.stat_error = f['stat_error'].data
         mp.N = f['N'].data
         # Complete variables
         mp.shearx = mp.shear * np.cos(mp.beta)
@@ -151,28 +176,6 @@ class Map(object):
     def __getitem__(self, key):
         return getattr(self, key)
 
-    def QuickPlot(self, normed=True, cmap='gist_heat_r'):
-
-        #norm = LogNorm(vmin=1., vmax=self.shear.max(), clip=True)
-        quiveropts = dict(headlength=0, headwidth=0, headaxislength=0,
-                              pivot='middle', units='xy',
-                              alpha=1, color='black')#, norm=norm)
-        plt.figure()
-        if normed:
-            plt.quiver(self.px, self.py, 
-                    self.shearx/self.shear, self.sheary/self.shear, 
-                    self.shear, cmap=cmap, **quiveropts)
-        else:
-            plt.quiver(self.px, self.py, 
-                    self.shearx, self.sheary, 
-                    self.shear, cmap=cmap, **quiveropts)
-        cbar = plt.colorbar()
-        cbar.ax.set_ylabel('$\Delta\Sigma [h\,M_{\odot}/pc^2]$', fontsize=12)
-        plt.xlabel('$r\,[Mpc/h]$', fontsize=12)
-        plt.ylabel('$r\,[Mpc/h]$', fontsize=12)
-        plt.show()
-        return None
-
     def write_to(self, file, header=None, overwrite=False):
         '''Write Map to a FITS file.
         Add a header to lensing.shear.Profile output file
@@ -200,7 +203,7 @@ class Map(object):
 
 
 @gentools.timer
-class CompressedMap(Map):
+class SigmaMap(Map):
 
     def __init__(self, data_L, data_S, scale=None, mirror=None, nbins=10, box_size=0.5, rotate=None,
         cosmo=cosmo, back_dz=0.1, precomputed_distances=True, njobs=1, colnames=None):
@@ -226,6 +229,7 @@ class CompressedMap(Map):
         mp = self._cartesian(mp)
 
         # Now in units of h*Msun/pc**2
+        self.sigma_critic = mp['sigma_critic']/self.cosmo.h
         self.N = mp['N'].astype(np.int32)
         self.beta = mp['beta']
         self.shear  = mp['shear']/self.cosmo.h
@@ -243,7 +247,8 @@ class CompressedMap(Map):
         '''
         dict_per_lens = {'data_L': data_L, 'data_S': data_S, 'scale': self.scale,
                         'bins': self.bins, 'back_dz': self.back_dz,
-                        'rotate': self.rotate, 'colnames': self.colnames}
+                        'rotate': self.rotate, 'colnames': self.colnames,
+                        'map_flag': 'deltasigma'}
 
         # Compute maps per lens
         with Parallel(n_jobs=self.njobs, require='sharedmem') as parallel:
@@ -259,6 +264,7 @@ class CompressedMap(Map):
         x['accum_w'] = np.sum( [mp[_]['accum_w_j'] for _ in range(len(mp))], axis=0)
         x['m_cal_num'] = np.sum( [mp[_]['m_cal_num_j'] for _ in range(len(mp))], axis=0)
         x['stat_error_num'] = np.sum( [mp[_]['stat_error_num_j'] for _ in range(len(mp))], axis=0)
+        x['sigma_critic'] = np.sum( [mp[_]['sigma_critic_j'] for _ in range(len(mp))], axis=0)
         return x
 
     def _mirror(self, mp, mirror):
@@ -269,7 +275,7 @@ class CompressedMap(Map):
 
         for ax in axis:
             mp['shear2'] += -1*np.flip(mp['shear2'], axis=ax)   # only shear2 changes sign in each mirroring
-            for attr in ['shear1', 'N', 'accum_w', 'm_cal_num', 'stat_error_num']:
+            for attr in ['shear1', 'N', 'accum_w', 'm_cal_num', 'stat_error_num', 'sigma_critic']:
                 mp[attr] += np.flip(mp[attr], axis=ax)
         return mp
 
@@ -279,6 +285,7 @@ class CompressedMap(Map):
         x['shear1'] = (mp['shear1']/mp['accum_w']) / m_cal
         x['shear2'] = (mp['shear2']/mp['accum_w']) / m_cal
         x['stat_error'] = np.sqrt(mp['stat_error_num']/mp['accum_w']**2) / m_cal
+        x['sigma_critic'] = mp['sigma_critic'].sum()/mp['accum_w'].sum()
         x['N'] = mp['N']
         return x
 
@@ -291,9 +298,153 @@ class CompressedMap(Map):
         mp['beta'] = beta
         return mp
 
+    def QuickPlot(self, normed=True, cmap='gist_heat_r'):
+
+        #norm = LogNorm(vmin=1., vmax=self.shear.max(), clip=True)
+        quiveropts = dict(headlength=0, headwidth=0, headaxislength=0,
+                              pivot='middle', units='xy',
+                              alpha=1, color='black')#, norm=norm)
+        plt.figure()
+        if normed:
+            plt.quiver(self.px, self.py, 
+                    self.shearx/self.shear, self.sheary/self.shear, 
+                    self.shear, cmap=cmap, **quiveropts)
+        else:
+            plt.quiver(self.px, self.py, 
+                    self.shearx, self.sheary, 
+                    self.shear, cmap=cmap, **quiveropts)
+        cbar = plt.colorbar()
+        cbar.ax.set_ylabel('$\Delta\Sigma [h\,M_{\odot}/pc^2]$', fontsize=12)
+        plt.xlabel('$r\,[Mpc/h]$', fontsize=12)
+        plt.ylabel('$r\,[Mpc/h]$', fontsize=12)
+        plt.show()
+        return None
+
+
+@gentools.timer
+class ShearMap(Map):
+
+    def __init__(self, data_L, data_S, scale=None, mirror=None, nbins=10, box_size=0.5, rotate=None,
+        cosmo=cosmo, back_dz=0.1, precomputed_distances=True, njobs=1, colnames=None):
+
+        super().__init__(nbins=nbins, box_size=box_size, cosmo=cosmo, back_dz=back_dz)
+
+        self.njobs = njobs
+        self.precomputed_distances = precomputed_distances
+        self.rotate = rotate
+        self.scale = scale
+
+        if colnames is None: colnames = {'RA': 'RA', 'DEC': 'DEC', 'Z': 'Z'}
+        self.colnames = colnames
+
+        if data_S.index.name is not 'CATID':
+            data_S_indexed = data_S.set_index('CATID')
+
+        mp = self._map(data_L=data_L, data_S=data_S_indexed)
+        mp = self._accum(mp)
+        if mirror is not None:
+            mp = self._mirror(mp, mirror=mirror)
+        mp = self._reduce(mp)
+        mp = self._cartesian(mp)
+
+        self.N = mp['N'].astype(np.int32)
+        self.beta = mp['beta']
+        self.shear  = mp['shear']
+        self.shear1 = mp['shear1']
+        self.shear2 = mp['shear2']
+        self.shearx = mp['shearx']
+        self.sheary = mp['sheary']
+        self.stat_error = mp['stat_error']
+        # Now in units of h*Msun/pc**2
+        self.sigma_critic = mp['sigma_critic']/self.cosmo.h
+
+        bins_centre = 0.5 * (self.bins[:-1] + self.bins[1:])
+        self.px, self.py = np.meshgrid(bins_centre, bins_centre, indexing='xy')
+
+    def _map(self, data_L, data_S):
+        ''' Computes map for CompressedCatalog
+        '''
+        dict_per_lens = {'data_L': data_L, 'data_S': data_S, 'scale': self.scale,
+                        'bins': self.bins, 'back_dz': self.back_dz,
+                        'rotate': self.rotate, 'colnames': self.colnames,
+                        'map_flag': 'shear'}
+
+        # Compute maps per lens
+        with Parallel(n_jobs=self.njobs, require='sharedmem') as parallel:
+            delayed_fun = delayed(_map_per_lens)
+            mp = parallel(delayed_fun(j, dict_per_lens) for j in range(len(data_L)))
+        return mp
+
+    def _accum(self, mp):
+        x = {}      
+        x['N'] = np.sum( [mp[_]['N_j'] for _ in range(len(mp))], axis=0)
+        x['shear1'] = np.sum( [mp[_]['shear1_j'] for _ in range(len(mp))], axis=0)
+        x['shear2'] = np.sum( [mp[_]['shear2_j'] for _ in range(len(mp))], axis=0)
+        x['accum_w'] = np.sum( [mp[_]['accum_w_j'] for _ in range(len(mp))], axis=0)
+        x['m_cal_num'] = np.sum( [mp[_]['m_cal_num_j'] for _ in range(len(mp))], axis=0)
+        x['stat_error_num'] = np.sum( [mp[_]['stat_error_num_j'] for _ in range(len(mp))], axis=0)
+        x['sigma_critic'] = np.sum( [mp[_]['sigma_critic_j'] for _ in range(len(mp))], axis=0)
+        return x
+
+    def _mirror(self, mp, mirror):
+        if mirror.lower() == 'x': axis = [1]
+        if mirror.lower() == 'y': axis = [0]
+        if mirror.lower() == 'xy': axis = [1, 0]
+        if mirror.lower() == 'yx': axis = [0, 1]
+
+        for ax in axis:
+            mp['shear2'] += -1*np.flip(mp['shear2'], axis=ax)   # only shear2 changes sign in each mirroring
+            for attr in ['shear1', 'N', 'accum_w', 'm_cal_num', 'stat_error_num', 'sigma_critic']:
+                mp[attr] += np.flip(mp[attr], axis=ax)
+        return mp
+
+    def _reduce(self, mp):
+        x = {}
+        m_cal = mp['m_cal_num'] / mp['accum_w']
+        x['shear1'] = (mp['shear1']/mp['accum_w']) / m_cal
+        x['shear2'] = (mp['shear2']/mp['accum_w']) / m_cal
+        x['stat_error'] = np.sqrt(mp['stat_error_num']/mp['accum_w']**2) / m_cal
+        x['sigma_critic'] = mp['sigma_critic'].sum()/mp['accum_w'].sum()
+        x['N'] = mp['N']
+        return x
+
+    def _cartesian(self, mp):
+        shear = np.sqrt(mp['shear1']**2 + mp['shear2']**2)
+        beta = np.arctan2(mp['shear2'], mp['shear1'])/2.
+        mp['shearx'] = shear * np.cos(beta)
+        mp['sheary'] = shear * np.sin(beta)
+        mp['shear'] = shear
+        mp['beta'] = beta
+        return mp
+
+    def QuickPlot(self, normed=True, cmap='gist_heat_r'):
+
+        #norm = LogNorm(vmin=1., vmax=self.shear.max(), clip=True)
+        quiveropts = dict(headlength=0, headwidth=0, headaxislength=0,
+                              pivot='middle', units='xy',
+                              alpha=1, color='black')#, norm=norm)
+        plt.figure()
+        if normed:
+            plt.quiver(self.px, self.py, 
+                    self.shearx/self.shear, self.sheary/self.shear, 
+                    self.shear, cmap=cmap, **quiveropts)
+        else:
+            plt.quiver(self.px, self.py, 
+                    self.shearx, self.sheary, 
+                    self.shear, cmap=cmap, **quiveropts)
+        cbar = plt.colorbar()
+        cbar.ax.set_ylabel('$\gamma$', fontsize=12)
+        plt.xlabel('$r\,[Mpc/h]$', fontsize=12)
+        plt.ylabel('$r\,[Mpc/h]$', fontsize=12)
+        plt.show()
+        return None
+
+
+#####################################################################################################
+# Deprecated
+
 @gentools.timer
 class ExpandedMap(Map):
-
     def __init__(self, data=None, nbins=10, box_size_hMpc=0.5, 
         cosmo=cosmo, back_dz=0.1, precomputed_distances=True, njobs=1):
 
