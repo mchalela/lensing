@@ -9,7 +9,7 @@ from astropy.cosmology import LambdaCDM
 from astropy.io import fits
 from scipy import fftpack, ndimage
 
-from . import Map, CompressedMap
+from . import Map, KappaMap
 from .. import gentools, Shear
 
 cosmo = LambdaCDM(H0=70, Om0=0.3, Ode0=0.7)
