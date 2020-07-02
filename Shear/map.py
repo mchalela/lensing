@@ -141,6 +141,7 @@ def read_map(file):
 
     with fits.open(file) as f:
         mp = Map()
+        mp.sigma_critic = f[0].header['SIGMA_CR']
         mp.px = f['px'].data
         mp.py = f['py'].data
         mp.shear = f['shear'].data
@@ -172,6 +173,7 @@ class Map(object):
         self.shear, self.beta = None, None
         self.stat_error = None
         self.N = None
+        self.sigma_critic = 0.
 
     def __getitem__(self, key):
         return getattr(self, key)
@@ -195,6 +197,7 @@ class Map(object):
                 raise IOError('File already exist. You may want to use overwrite=True.')
         
         hdulist = [fits.PrimaryHDU()]
+        hdulist[0].header['SIGMA_CR'] = (self.sigma_critic, 'Sigma critic [h*Msun/pc^2]')
         for atr in ['px', 'py', 'shear', 'beta', 'stat_error', 'N']:
             hdulist.append(fits.ImageHDU(self.__getitem__(atr), name=atr))
         hdulist = fits.HDUList(hdulist)

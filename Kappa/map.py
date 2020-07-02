@@ -24,11 +24,13 @@ def read_map(file):
     '''
     with fits.open(file) as f:
         mp = Map()
+        mp.sigma_critic = f[0].header['SIGMA_CR']
         mp.px = f['px'].data
         mp.py = f['py'].data
         mp.kappa = f['kappaE'].data + 1j*f['kappaB'].data
         mp.N = f['N'].data
         mp.shear_map = Shear.Map()
+        mp.shear_map.sigma_critic = f[0].header['SIGMA_CR']
         mp.shear_map.shear = f['shear'].data
         mp.shear_map.beta = f['beta'].data
         mp.shear_map.stat_error = f['stat_error'].data
@@ -63,6 +65,7 @@ class Map(object):
         self.shear_map = None
         self.N = None
         self.bin_size = None
+        self.sigma_critic = 0.
 
     def __getitem__(self, key):
         return getattr(self, key)
@@ -190,6 +193,7 @@ class Map(object):
                 raise IOError('File already exist. You may want to use overwrite=True.')
         
         hdulist = [fits.PrimaryHDU()]
+        hdulist[0].header['SIGMA_CR'] = (self.sigma_critic, 'Sigma critic [h*Msun/pc^2]')
         hdulist.append(fits.ImageHDU(self.px, name='px'))
         hdulist.append(fits.ImageHDU(self.py, name='py'))
         hdulist.append(fits.ImageHDU(self.kappa.real, name='kappaE'))
@@ -253,6 +257,7 @@ class KappaMap(Map):
             self.px, self.py = px, py      # in Mpc/h
             self.N = self.shear_map.N
             self.bin_size = bin_size
+            self.sigma_critic = shear_map.sigma_critic
         return shear_map      
 
     def _error_map(self, data_L, data_S):
