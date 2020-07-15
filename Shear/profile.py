@@ -221,6 +221,7 @@ class Profile(object):
         self.stat_error = None
         self.r = None
         self.N = None
+        self.nlens = None
 
 
     def __getitem__(self, key):
@@ -376,6 +377,7 @@ class DeltaSigmaProfile(Profile):
         self.stat_error = pf['stat_error']/self.cosmo.h
         self.r = 0.5 * (self.bins[:-1] + self.bins[1:])
         self.N = pf['N'].astype(np.int32)
+        self.nlens = len(data_L)
 
     def _profile(self, data_L, data_S):
         ''' Computes profile for CompressedCatalog
@@ -516,6 +518,7 @@ class ShearProfile(Profile):
         self.N = pf['N'].astype(np.int32)
         # Now in units of h*Msun/pc**2
         self.sigma_critic = pf['sigma_critic']/self.cosmo.h
+        self.nlens = len(data_L)
 
     def _profile(self, data_L, data_S):
         ''' Computes profile for CompressedCatalog
