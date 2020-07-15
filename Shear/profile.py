@@ -279,6 +279,73 @@ class Profile(object):
 
 @gentools.timer
 class DeltaSigmaProfile(Profile):
+    '''Profile Constructor: DeltaSigma Profile
+    Builds the radial density contrast profile using the lens and source catalog
+    constructed with LensCat. Only works with the *compressed* catalog.
+
+    Parameters
+    ----------
+    data_L : pandas dataframe
+        Lens data attribute of LensCat.CompressedCatalog catalog, i.e: cat.data_L 
+    data_S : pandas dataframe
+        Source data attribute of LensCat.CompressedCatalog catalog, i.e: cat.data_S
+    rin : float
+        Inner radius to compute the binning. Units of Mpc/h. If scale parameter is
+        specified the value should be in units (a factor) of scale. Default: 0.1.
+    rout : float
+        Outter radius to compute the binning. Units of Mpc/h. If scale parameter is
+        specified the value should be in units (a factor) of scale. Default: 10.
+    nbins : int
+        Number of bins to compute the profile. Default: 10.
+    scale : str
+        Name of the column in data_L that will be used to scale the radial distances
+        to the source galaxies. Should be in units of Mpc/h. Default: None.
+    space : str
+        String indicating if the radial binning should be logarithmic or linear.
+        Possible values are: 'log' and 'lin'. Default: 'log'.
+    nboot : int
+        Number of bootstrap realizations to compute the error bars. Default: 0.
+    cosmo : object
+        Object indicating the cosmology. Must be instance an of astropy.cosmology.LambdaCDM
+        Default: LambdaCDM(H0=70, Om0=0.3, Ode0=0.7).
+    back_dz : float
+        Redshift gap between the lens and its sources. This will keep those galaxies
+        with Zsources > Zlens + back_dz. Default: 0.
+    precomputed_distances : bool
+        Flag indicating if the lensing distances should be computed exactly or
+        interpolated from a precomputed file.
+    njobs : int
+        Number of cores for parallelization. Default: 1.
+    colnames : dict
+        The lens column names for RA, DEC and Z in data_L are expected to be RA, DEC and Z.
+        If that is not the case you can pass a dict with the new names.
+        Example: colnames = {'RA': 'differentRAname', 'DEC': 'differentDECname', 'Z': 'Z'}.
+        Default: None. This means colnames = {'RA': 'RA', 'DEC': 'DEC', 'Z': 'Z'}.
+
+    Attributes
+    ----------
+    r : array, float 
+        Center of radial bins. If not scaled, in units of Mpc/h.
+    shear : array, float
+        Tangential Delta Sigma value for each bin. In units of h*Msun/pc**2.
+    shear_error : array, float
+        Bootstrap error in tangential Delta Sigma value for each bin. In units of h*Msun/pc**2.
+        Computed only if nboot>0.
+    cero : array, float
+        Corssed (45deg) Delta Sigma value for each bin. In units of h*Msun/pc**2.
+    cero_error : array, float 
+        Bootstrap error in crossed Delta Sigma value for each bin. In units of h*Msun/pc**2.
+        Computed only if nboot>0.
+    stat_error : array, float
+        Statistical error computed directly with the number of galaxies. Assumes an
+        intrinsic ellipticity dispersion of 0.25. This error is always computed and should be
+        used for testing only.
+    N : array, int
+        Number of galaxies stacked in each bin.
+    sigma_critic : float
+        Mean Sigma Critic of the stacked system. In units of h*Msun/pc**2.
+
+    '''
 
     def __init__(self, data_L, data_S, rin=0.1, rout=10., nbins=10, scale=None, space='log',
         nboot=0, cosmo=cosmo, back_dz=0., precomputed_distances=True, njobs=1, colnames=None):
@@ -353,6 +420,73 @@ class DeltaSigmaProfile(Profile):
 
 @gentools.timer
 class ShearProfile(Profile):
+    '''Profile Constructor: DeltaSigma Profile
+    Builds the radial shear profile using the lens and source catalog
+    constructed with LensCat. Only works with the *compressed* catalog.
+
+    Parameters
+    ----------
+    data_L : pandas dataframe
+        Lens data attribute of LensCat.CompressedCatalog catalog, i.e: cat.data_L 
+    data_S : pandas dataframe
+        Source data attribute of LensCat.CompressedCatalog catalog, i.e: cat.data_S
+    rin : float
+        Inner radius to compute the binning. Units of Mpc/h. If scale parameter is
+        specified the value should be in units (a factor) of scale. Default: 0.1.
+    rout : float
+        Outter radius to compute the binning. Units of Mpc/h. If scale parameter is
+        specified the value should be in units (a factor) of scale. Default: 10.
+    nbins : int
+        Number of bins to compute the profile. Default: 10.
+    scale : str
+        Name of the column in data_L that will be used to scale the radial distances
+        to the source galaxies. Should be in units of Mpc/h. Default: None.
+    space : str
+        String indicating if the radial binning should be logarithmic or linear.
+        Possible values are: 'log' and 'lin'. Default: 'log'.
+    nboot : int
+        Number of bootstrap realizations to compute the error bars. Default: 0.
+    cosmo : object
+        Object indicating the cosmology. Must be instance an of astropy.cosmology.LambdaCDM
+        Default: LambdaCDM(H0=70, Om0=0.3, Ode0=0.7).
+    back_dz : float
+        Redshift gap between the lens and its sources. This will keep those galaxies
+        with Zsources > Zlens + back_dz. Default: 0.
+    precomputed_distances : bool
+        Flag indicating if the lensing distances should be computed exactly or
+        interpolated from a precomputed file.
+    njobs : int
+        Number of cores for parallelization. Default: 1.
+    colnames : dict
+        The lens column names for RA, DEC and Z in data_L are expected to be RA, DEC and Z.
+        If that is not the case you can pass a dict with the new names.
+        Example: colnames = {'RA': 'differentRAname', 'DEC': 'differentDECname', 'Z': 'Z'}.
+        Default: None. This means colnames = {'RA': 'RA', 'DEC': 'DEC', 'Z': 'Z'}.
+
+    Attributes
+    ----------
+    r : array, float 
+        Center of radial bins. If not scaled, in units of Mpc/h.
+    shear : array, float
+        Tangential Delta Sigma value for each bin. In units of shear (adimensional).
+    shear_error : array, float
+        Bootstrap error in tangential Delta Sigma value for each bin. In units of shear (adimensional).
+        Computed only if nboot>0.
+    cero : array, float
+        Corssed (45deg) Delta Sigma value for each bin. In units of shear (adimensional).
+    cero_error : array, float 
+        Bootstrap error in crossed Delta Sigma value for each bin. In units of shear (adimensional).
+        Computed only if nboot>0.
+    stat_error : array, float
+        Statistical error computed directly with the number of galaxies. Assumes an
+        intrinsic ellipticity dispersion of 0.25. This error is always computed and should be
+        used for testing only.
+    N : array, int
+        Number of galaxies stacked in each bin.
+    sigma_critic : float
+        Mean Sigma Critic of the stacked system. In units of h*Msun/pc**2.
+
+    '''
 
     def __init__(self, data_L, data_S, rin=0.1, rout=10., nbins=10, space='log',
         nboot=0, cosmo=cosmo, back_dz=0., precomputed_distances=True, njobs=1, colnames=None):
