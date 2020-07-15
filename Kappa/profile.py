@@ -64,7 +64,7 @@ class Profile(object):
 
 class RadialProfile(Profile):
 
-	def __init__(self, kappa_map, centre=None, rin=0.1, rout=10., nbins=10, sigma=None, space='log'):
+	def __init__(self, kappa_map, centre=None, rin=0.1, rout=10., nbins=10, sigma=None, resize=1, space='log'):
 		
 		#if not isinstance(kappa_map, (Kappa.Map, Kappa.CompressedMap)):
 		#	raise TypeError('kappa_map must be a Kappa Map instance.')
@@ -76,7 +76,7 @@ class RadialProfile(Profile):
 		
 		self.centre = centre
 
-		pf = self._profile(kappa_map, self.centre, sigma)
+		pf = self._profile(kappa_map, self.centre, sigma, resize)
 
 		self.r = pf['r']
 		self.sigmaE = pf['sE_pf']
@@ -89,10 +89,10 @@ class RadialProfile(Profile):
 		self.deltaSigmaB_error = pf['dsB_err']
 
 
-	def _profile(self, kmp, centre, sigma):
+	def _profile(self, kmp, centre, sigma, resize):
 
 		if sigma is not None:
-			skmp = kmp.gaussian_filter(sigma)
+			skmp = kmp.gaussian_filter(sigma=sigma)#, resize=resize)
 			massE = skmp.real.copy()
 			massB = skmp.imag.copy()
 		else:

@@ -111,6 +111,7 @@ def _shear_profile_per_bin(i, dict_per_bin):
 def _profile_per_lens(j, dict_per_lens):
     data_L = dict_per_lens['data_L']
     data_S = dict_per_lens['data_S']
+    scale = dict_per_lens['scale']
     bins = dict_per_lens['bins']
     back_dz = dict_per_lens['back_dz']
     nboot = dict_per_lens['nboot']
@@ -141,6 +142,9 @@ def _profile_per_lens(j, dict_per_lens):
     dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # radial distance to the lens centre in Mpc/h
     neg_et, ex = gentools.polar_rotation(dS['e1'].values, -dS['e2'].values, -np.deg2rad(90-theta))
     et = -neg_et
+
+    if scale is not None:
+        dist_hMpc /= dL[scale]
 
     digit = np.digitize(dist_hMpc, bins=bins)-1
         
@@ -183,7 +187,7 @@ def read_profile(file, colnames=True):
         pf = np.genfromtxt(f, dtype=None, names=colnames, skip_header=i)
 
     p = Profile()
-    p.r_hMpc = pf['r_hMpc']
+    p.r = pf['r']
     p.shear = pf['shear']
     p.cero = pf['cero']
     p.shear_error = pf['shear_error']
@@ -194,7 +198,7 @@ def read_profile(file, colnames=True):
 
 class Profile(object):
 
-    def __init__(self, rin_hMpc=0.1, rout_hMpc=10., nbins=10, space='log',
+    def __init__(self, rin=0.1, rout=10., nbins=10, space='log',
         nboot=0, cosmo=cosmo, back_dz=0.):
         
         #if not isinstance(cat, ExpandedCatalog):
@@ -204,10 +208,10 @@ class Profile(object):
         self.nboot = nboot
         self.back_dz = back_dz
 
-        self.bins = gentools.make_bins(rin_hMpc, rout_hMpc, nbins=nbins, space=space)
+        self.bins = gentools.make_bins(rin, rout, nbins=nbins, space=space)
         self.nbins = nbins
-        self.rin_hMpc  = self.bins[0]
-        self.rout_hMpc = self.bins[-1]
+        self.rin = self.bins[0]
+        self.rout = self.bins[-1]
 
         # Initialize
         self.shear = None
@@ -215,7 +219,7 @@ class Profile(object):
         self.shear_error = None
         self.cero_error = None
         self.stat_error = None
-        self.r_hMpc = None
+        self.r = None
         self.N = None
 
 
@@ -226,9 +230,9 @@ class Profile(object):
         try:
             self.__str
         except AttributeError as e:
-            p = np.column_stack((self.r_hMpc, self.shear, self.shear_error,
+            p = np.column_stack((self.r, self.shear, self.shear_error,
                              self.cero, self.cero_error, self.stat_error, self.N))
-            pdf = pd.DataFrame(p, columns=['r_hMpc','shear','shear_error','cero','cero_error','stat_error','N'])
+            pdf = pd.DataFrame(p, columns=['r','shear','shear_error','cero','cero_error','stat_error','N'])
             self.__str = str(pdf)
         finally:
             return self.__str
@@ -265,8 +269,8 @@ class Profile(object):
             f.write('# '+'-'*48+'\n')
 
             C = ' ' if colnames else '# '
-            f.write(C+'r_hMpc  shear  shear_error  cero  cero_error  stat_error  N \n')
-            p = np.column_stack((self.r_hMpc, self.shear, self.shear_error,
+            f.write(C+'r  shear  shear_error  cero  cero_error  stat_error  N \n')
+            p = np.column_stack((self.r, self.shear, self.shear_error,
                                  self.cero, self.cero_error, self.stat_error, self.N))
             np.savetxt(f, p, fmt=['%12.6f']*6+['%8i'])      
         return None
@@ -276,14 +280,15 @@ class Profile(object):
 @gentools.timer
 class DeltaSigmaProfile(Profile):
 
-    def __init__(self, data_L, data_S, rin_hMpc=0.1, rout_hMpc=10., nbins=10, space='log',
+    def __init__(self, data_L, data_S, rin=0.1, rout=10., nbins=10, scale=None, space='log',
         nboot=0, cosmo=cosmo, back_dz=0., precomputed_distances=True, njobs=1, colnames=None):
         
         #if not isinstance(cat, (CompressedCatalog, ExpandedCatalog)):
         #   raise TypeError('cat must be a LensCat catalog.')
 
-        super().__init__(rin_hMpc, rout_hMpc, nbins, space, nboot, cosmo, back_dz)
+        super().__init__(rin, rout, nbins, space, nboot, cosmo, back_dz)
 
+        self.scale = scale
         self.njobs = njobs
         self.precomputed_distances = precomputed_distances
 
@@ -302,13 +307,13 @@ class DeltaSigmaProfile(Profile):
         self.shear_error = pf['shear_error']/self.cosmo.h
         self.cero_error = pf['cero_error']/self.cosmo.h
         self.stat_error = pf['stat_error']/self.cosmo.h
-        self.r_hMpc = 0.5 * (self.bins[:-1] + self.bins[1:])
+        self.r = 0.5 * (self.bins[:-1] + self.bins[1:])
         self.N = pf['N'].astype(np.int32)
 
     def _profile(self, data_L, data_S):
         ''' Computes profile for CompressedCatalog
         '''
-        dict_per_lens = {'data_L': data_L, 'data_S': data_S, 
+        dict_per_lens = {'data_L': data_L, 'data_S': data_S, 'scale': self.scale,
                         'bins': self.bins, 'back_dz': self.back_dz, 'colnames': self.colnames,
                         'nboot': self.nboot, 'precomputed_distances': self.precomputed_distances,
                         'pf_flag': 'deltasigma'}
@@ -349,13 +354,13 @@ class DeltaSigmaProfile(Profile):
 @gentools.timer
 class ShearProfile(Profile):
 
-    def __init__(self, data_L, data_S, rin_hMpc=0.1, rout_hMpc=10., nbins=10, space='log',
+    def __init__(self, data_L, data_S, rin=0.1, rout=10., nbins=10, space='log',
         nboot=0, cosmo=cosmo, back_dz=0., precomputed_distances=True, njobs=1, colnames=None):
         
         #if not isinstance(cat, (CompressedCatalog, ExpandedCatalog)):
         #   raise TypeError('cat must be a LensCat catalog.')
 
-        super().__init__(rin_hMpc, rout_hMpc, nbins, space, nboot, cosmo, back_dz)
+        super().__init__(rin, rout, nbins, space, nboot, cosmo, back_dz)
 
         self.njobs = njobs
         self.precomputed_distances = precomputed_distances
@@ -373,7 +378,7 @@ class ShearProfile(Profile):
         self.shear_error = pf['shear_error']
         self.cero_error = pf['cero_error']
         self.stat_error = pf['stat_error']
-        self.r_hMpc = 0.5 * (self.bins[:-1] + self.bins[1:])
+        self.r = 0.5 * (self.bins[:-1] + self.bins[1:])
         self.N = pf['N'].astype(np.int32)
         # Now in units of h*Msun/pc**2
         self.sigma_critic = pf['sigma_critic']/self.cosmo.h
@@ -381,7 +386,7 @@ class ShearProfile(Profile):
     def _profile(self, data_L, data_S):
         ''' Computes profile for CompressedCatalog
         '''
-        dict_per_lens = {'data_L': data_L, 'data_S': data_S, 
+        dict_per_lens = {'data_L': data_L, 'data_S': data_S, 'scale': self.scale,
                         'bins': self.bins, 'back_dz': self.back_dz, 'colnames': self.colnames,
                         'nboot': self.nboot, 'precomputed_distances': self.precomputed_distances,
                         'pf_flag': 'shear'}
@@ -465,12 +470,13 @@ class ClampittProfile(Profile):
     def _profile(self, smp):
 
         nbins = int(smp.px.shape[1]/2)
-        shear_fil = []
+        shear_fil = np.zeros(nbins)
 
         for j in range(nbins):  # coord y
             for i in range(nbins):   # coord x
-                
-                Sfil = smp.shear[j, i] + smp.shear[y, -x]
+                y = j - nbins
+                x = i 
+                shear_fil[j] = smp.shear[j, i] + smp.shear[y, -x]
 
 
 

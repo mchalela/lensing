@@ -52,7 +52,7 @@ class Map(object):
     We follow the equations from Jeffrey et al 2018, section 2.2
     arxiv.org/pdf/1801.08945.pdf
     '''    
-    def __init__(self, nbins=None, box_size=None, cosmo=None, back_dz=None):
+    def __init__(self, nbins=None, box_size=None, cosmo=None, back_dz=None, map_type='kappa', scale=None):
     
         self.nbins = nbins
         self.cosmo = cosmo
@@ -66,6 +66,9 @@ class Map(object):
         self.N = None
         self.bin_size = None
         self.sigma_critic = 0.
+        self.scaled = False if scale is None else True
+
+        self._set_plot_labels(map_type)
 
     def __getitem__(self, key):
         return getattr(self, key)
@@ -126,6 +129,17 @@ class Map(object):
         else:
             return smooth_kappa
 
+    def _set_plot_labels(self, map_type):
+        if map_type == 'kappa':
+            self._kappa_label = '$\kappa$'
+        else:
+            self._kappa_label = '$\Sigma [h\,M_{\odot}/pc^2]$'
+
+        r = '$r\,[scaled]$' if self.scaled else '$r\,[Mpc/h]$'
+        self._x_label = r
+        self._y_label = r
+        return
+
     def _plot(self, mE, mB, title, cmap):
         import matplotlib.cm
         cmap = matplotlib.cm.get_cmap(cmap)
@@ -137,22 +151,22 @@ class Map(object):
         fig, ax = plt.subplots(nrows=1, ncols=2)
         ax[0].set(aspect='equal')
         im = ax[0].imshow(mE, extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
-        ax[0].set_xlabel('$x\,[Mpc/h]$', fontsize=12)
-        ax[0].set_ylabel('$y\,[Mpc/h]$', fontsize=12)
+        ax[0].set_xlabel(self._x_label, fontsize=12)
+        ax[0].set_ylabel(self._y_label, fontsize=12)
         ax[0].set_title('E-mode', fontsize=12)
 
         ax[1].set(aspect='equal')
         ax[1].imshow(mB, extent=extent, cmap=cmap, origin='lower', vmin=vmin, vmax=vmax)
-        ax[1].set_xlabel('$x\,[Mpc/h]$', fontsize=12)
+        ax[1].set_xlabel(self._x_label, fontsize=12)
         ax[1].set_title('B-mode', fontsize=12)
 
         cbar = fig.colorbar(im,  ax=ax.ravel().tolist(), orientation='horizontal')
-        cbar.ax.set_xlabel(r'$\mathrm{\Sigma\,[\,h\,M_{\odot}\,pc^{-2}\,]}$', fontsize=12)
+        cbar.ax.set_xlabel(self._kappa_label, fontsize=12)
         plt.suptitle(title, fontsize=14)
         plt.show()
         return None
 
-    def QuickPlot(self, sigma=0., resize=1, plot_err=False, cmap='jet'):
+    def QuickPlot(self, sigma=0., resize=1, title='Convergence Map', plot_err=False, cmap='jet'):
         ''' Plot the reconstructed kappa map.
         '''
         if sigma>0:
@@ -171,9 +185,9 @@ class Map(object):
                 kE, kB = self.kappa.real, self.kappa.imag
 
 
-        self._plot(kE, kB, 'Convergence Map', cmap=cmap)
+        self._plot(kE, kB, title, cmap=cmap)
         if plot_err:
-            self._plot(kE_err, kB_err, 'Convergence Map Error', cmap=cmap)
+            self._plot(kE_err, kB_err, title+' [Error Map]', cmap=cmap)
         return None
 
     def write_to(self, file, header=None, overwrite=False):
@@ -220,7 +234,7 @@ class KappaMap(Map):
     def __init__(self, data_L, data_S, scale=None, nbins=None, box_size=None, nboot=0, cosmo=cosmo,
         back_dz=0.1, precomputed_distances=True, njobs=1, mirror=None, rotate=None, colnames=None):
 
-        super().__init__(nbins=nbins, box_size=box_size, cosmo=cosmo, back_dz=back_dz)
+        super().__init__(nbins=nbins, box_size=box_size, cosmo=cosmo, back_dz=back_dz, map_type='kappa', scale=scale)
 
         self.scale = scale
         self.njobs = njobs

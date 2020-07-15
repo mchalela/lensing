@@ -158,7 +158,7 @@ def read_map(file):
 
 class Map(object):
 
-    def __init__(self, nbins=None, box_size=None, cosmo=None, back_dz=None):
+    def __init__(self, nbins=None, box_size=None, cosmo=None, back_dz=None, map_type='shear'):
 
         self.cosmo = cosmo
         self.back_dz = back_dz
@@ -174,6 +174,8 @@ class Map(object):
         self.stat_error = None
         self.N = None
         self.sigma_critic = 0.
+
+        self._set_plot_labels(map_type)
 
     def __getitem__(self, key):
         return getattr(self, key)
@@ -204,6 +206,38 @@ class Map(object):
         hdulist.writeto(file, overwrite=overwrite)
         return None
 
+    def _set_plot_labels(self, map_type):
+        if map_type == 'shear':
+            self._shear_label = '$\gamma$'
+        else:
+            self._shear_label = '$\Delta\Sigma [h\,M_{\odot}/pc^2]$'
+
+        self._x_label = '$r\,[Mpc/h]$'
+        self._y_label = '$r\,[Mpc/h]$'
+        return
+
+    def QuickPlot(self, normed=True, cmap='gist_heat_r'):
+
+        #norm = LogNorm(vmin=1., vmax=self.shear.max(), clip=True)
+        quiveropts = dict(headlength=0, headwidth=0, headaxislength=0,
+                              pivot='middle', units='xy',
+                              alpha=1, color='black')#, norm=norm)
+        plt.figure()
+        if normed:
+            plt.quiver(self.px, self.py, 
+                    self.shearx/self.shear, self.sheary/self.shear, 
+                    self.shear, cmap=cmap, **quiveropts)
+        else:
+            plt.quiver(self.px, self.py, 
+                    self.shearx, self.sheary, 
+                    self.shear, cmap=cmap, **quiveropts)
+        cbar = plt.colorbar()
+        cbar.ax.set_ylabel(self._shear_label, fontsize=12)
+        plt.xlabel(self._x_label, fontsize=12)
+        plt.ylabel(self._y_label, fontsize=12)
+        plt.show()
+        return None
+
 
 @gentools.timer
 class SigmaMap(Map):
@@ -211,7 +245,7 @@ class SigmaMap(Map):
     def __init__(self, data_L, data_S, scale=None, mirror=None, nbins=10, box_size=0.5, rotate=None,
         cosmo=cosmo, back_dz=0.1, precomputed_distances=True, njobs=1, colnames=None):
 
-        super().__init__(nbins=nbins, box_size=box_size, cosmo=cosmo, back_dz=back_dz)
+        super().__init__(nbins=nbins, box_size=box_size, cosmo=cosmo, back_dz=back_dz, map_type='sigma')
 
         self.njobs = njobs
         self.precomputed_distances = precomputed_distances
@@ -244,6 +278,7 @@ class SigmaMap(Map):
 
         bins_centre = 0.5 * (self.bins[:-1] + self.bins[1:])
         self.px, self.py = np.meshgrid(bins_centre, bins_centre, indexing='xy')
+
 
     def _map(self, data_L, data_S):
         ''' Computes map for CompressedCatalog
@@ -301,27 +336,7 @@ class SigmaMap(Map):
         mp['beta'] = beta
         return mp
 
-    def QuickPlot(self, normed=True, cmap='gist_heat_r'):
 
-        #norm = LogNorm(vmin=1., vmax=self.shear.max(), clip=True)
-        quiveropts = dict(headlength=0, headwidth=0, headaxislength=0,
-                              pivot='middle', units='xy',
-                              alpha=1, color='black')#, norm=norm)
-        plt.figure()
-        if normed:
-            plt.quiver(self.px, self.py, 
-                    self.shearx/self.shear, self.sheary/self.shear, 
-                    self.shear, cmap=cmap, **quiveropts)
-        else:
-            plt.quiver(self.px, self.py, 
-                    self.shearx, self.sheary, 
-                    self.shear, cmap=cmap, **quiveropts)
-        cbar = plt.colorbar()
-        cbar.ax.set_ylabel('$\Delta\Sigma [h\,M_{\odot}/pc^2]$', fontsize=12)
-        plt.xlabel('$r\,[Mpc/h]$', fontsize=12)
-        plt.ylabel('$r\,[Mpc/h]$', fontsize=12)
-        plt.show()
-        return None
 
 
 @gentools.timer
@@ -330,7 +345,7 @@ class ShearMap(Map):
     def __init__(self, data_L, data_S, scale=None, mirror=None, nbins=10, box_size=0.5, rotate=None,
         cosmo=cosmo, back_dz=0.1, precomputed_distances=True, njobs=1, colnames=None):
 
-        super().__init__(nbins=nbins, box_size=box_size, cosmo=cosmo, back_dz=back_dz)
+        super().__init__(nbins=nbins, box_size=box_size, cosmo=cosmo, back_dz=back_dz, map_type='shear')
 
         self.njobs = njobs
         self.precomputed_distances = precomputed_distances
@@ -363,6 +378,7 @@ class ShearMap(Map):
 
         bins_centre = 0.5 * (self.bins[:-1] + self.bins[1:])
         self.px, self.py = np.meshgrid(bins_centre, bins_centre, indexing='xy')
+
 
     def _map(self, data_L, data_S):
         ''' Computes map for CompressedCatalog
@@ -420,27 +436,6 @@ class ShearMap(Map):
         mp['beta'] = beta
         return mp
 
-    def QuickPlot(self, normed=True, cmap='gist_heat_r'):
-
-        #norm = LogNorm(vmin=1., vmax=self.shear.max(), clip=True)
-        quiveropts = dict(headlength=0, headwidth=0, headaxislength=0,
-                              pivot='middle', units='xy',
-                              alpha=1, color='black')#, norm=norm)
-        plt.figure()
-        if normed:
-            plt.quiver(self.px, self.py, 
-                    self.shearx/self.shear, self.sheary/self.shear, 
-                    self.shear, cmap=cmap, **quiveropts)
-        else:
-            plt.quiver(self.px, self.py, 
-                    self.shearx, self.sheary, 
-                    self.shear, cmap=cmap, **quiveropts)
-        cbar = plt.colorbar()
-        cbar.ax.set_ylabel('$\gamma$', fontsize=12)
-        plt.xlabel('$r\,[Mpc/h]$', fontsize=12)
-        plt.ylabel('$r\,[Mpc/h]$', fontsize=12)
-        plt.show()
-        return None
 
 
 #####################################################################################################
