@@ -118,7 +118,7 @@ def _profile_per_lens(j, dict_per_lens):
     precomp_dist = dict_per_lens['precomputed_distances']
     dN = dict_per_lens['colnames']
     pf_flag = dict_per_lens['pf_flag']
-    #cosmo = dict_per_lens['cosmo']
+    cosmo = dict_per_lens['cosmo']
 
     dL = data_L.iloc[j]
     try:
@@ -130,7 +130,7 @@ def _profile_per_lens(j, dict_per_lens):
     dS = dS[mask_dz]
 
     DD = gentools.compute_lensing_distances(zl=dL[dN['Z']], zs=dS['Z_B'].values,
-        precomputed=precomp_dist, cache=True)#, cosmo=self.cosmo)
+        precomputed=precomp_dist, cache=True, cosmo=self.cosmo)
 
     Mpc_scale = gentools.Mpc_scale(dl=DD['DL'])
     sigma_critic = gentools.sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS'])
@@ -526,7 +526,7 @@ class ShearProfile(Profile):
         dict_per_lens = {'data_L': data_L, 'data_S': data_S, 'scale': self.scale,
                         'bins': self.bins, 'back_dz': self.back_dz, 'colnames': self.colnames,
                         'nboot': self.nboot, 'precomputed_distances': self.precomputed_distances,
-                        'pf_flag': 'shear'}
+                        'pf_flag': 'shear', 'cosmo': self.cosmo}
 
         # Compute profiles per lens
         with Parallel(n_jobs=self.njobs, require='sharedmem') as parallel:

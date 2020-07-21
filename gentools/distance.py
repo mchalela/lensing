@@ -105,8 +105,10 @@ def sphere_angular_vector(ra, dec, ra_center, dec_center, units='rad'):
     return dist, theta
 
 
-def _precompute_lensing_distances(zl_max, zs_max, dz=0.0005, cosmo=None):
-    '''Precompute lensing distances DL, DS, DLS and save to a file
+def precompute_lensing_distances(zl_max, zs_max, dz=0.0005, cosmo=None):
+    '''Precompute lensing distances DL, DS, DLS and save to a file.
+    This fucntion serves to create the file used by 
+    gentools.compute_lensing_distances()
 
     Parameters
     ----------
@@ -121,20 +123,25 @@ def _precompute_lensing_distances(zl_max, zs_max, dz=0.0005, cosmo=None):
     -------
     file : string
         Filename where the sparse matrix was saved. The format is
-        'PrecomputedDistances_dz_{}.npz'.format(dz)
+        'PrecomputedDistances_cosmo_{}_dz_{}.npz'.format(cosmo.name, dz)
+        If cosmo.name is None the default name will be 'Fiducial'
 
     '''
     if not isinstance(cosmo, FLRW):
-        raise TypeError('cosmo is not an instance of astropy.cosmology.FLRW') 
+        raise TypeError('cosmo is not an instance of astropy.cosmology.FLRW')
+
+    cosmo_clone = cosmo.clone()
+    if cosmo_clone.name is None: cosmo_clone.name = 'Fiducial'
+    
     zl = np.arange(0., zl_max+dz, dz)
     zs = np.arange(0., zs_max+dz, dz)
 
     B = scipy.sparse.lil_matrix((len(zl), len(zs)), dtype=np.float64)
     for i in range(len(zl)):
-            B[i, i:] = cosmo.angular_diameter_distance_z1z2(zl[i], zs[i:]).value
+            B[i, i:] = cosmo_clone.angular_diameter_distance_z1z2(zl[i], zs[i:]).value
 
     path = os.path.dirname(os.path.abspath(__file__))+'/'
-    filename = 'PrecomputedDistances_dz_{}.npz'.format(dz)
+    filename = 'PrecomputedDistances_cosmo_{}_dz_{}.npz'.format(cosmo_clone.name, dz)
     scipy.sparse.save_npz(path+filename, scipy.sparse.csc_matrix(B))
     return path+filename
 
@@ -145,7 +152,9 @@ CACHE_H = None
 def compute_lensing_distances(zl=0., zs=0., 
     precomputed=False, dz=0.0005, cosmo=None, cache=False):
     '''
-    Compute lensing Angular diameter distances.
+    Compute lensing Angular diameter distances. If you want to create the
+    precomputed file for a given cosmology and redshift step use the
+    function gentools.precompute_lensing_distances()
 
     Parameters
     ----------
@@ -160,7 +169,7 @@ def compute_lensing_distances(zl=0., zs=0.,
     dz : float
         step of the precomputed distances file. If precomputed is True,
         this value will be used to open the file:
-            'PrecomputedDistances_dz_{}.npz'
+            'PrecomputedDistances_cosmo_{cosmo.name}_dz_{dz}.npz'
     cosmo: cosmology
         instance of astropy.cosmology.FLRW, like Planck15 or LambdaCDM.
 
@@ -182,10 +191,12 @@ def compute_lensing_distances(zl=0., zs=0.,
         output['DS']  = cosmo.angular_diameter_distance(zs).value
         output['DLS'] = cosmo.angular_diameter_distance_z1z2(zl, zs).value
         return output
-    
 
+    cosmo_name = cosmo.name
+    if cosmo_name is None: cosmo_name = 'Fiducial'
+    
     path = os.path.dirname(os.path.abspath(__file__))+'/'
-    filename = path+'PrecomputedDistances_dz_{}.npz'.format(dz)
+    filename = path+'PrecomputedDistances_cosmo_{}_dz_{}.npz'.format(cosmo_name, dz)
     if cache:
         if CACHE_H is None:
             H = scipy.sparse.load_npz(filename).todense()

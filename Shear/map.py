@@ -63,7 +63,7 @@ def _map_per_lens(j, dict_per_lens):
     dN = dict_per_lens['colnames']
     map_flag = dict_per_lens['map_flag']
     nbins = len(bins)-1
-    #cosmo = dict_per_lens['cosmo']
+    cosmo = dict_per_lens['cosmo']
 
     dL = data_L.iloc[j]
     try:
@@ -75,7 +75,7 @@ def _map_per_lens(j, dict_per_lens):
     dS = dS[mask_dz]
 
     DD = gentools.compute_lensing_distances(zl=dL[dN['Z']], zs=dS['Z_B'].values,
-        precomputed=True, cache=True)#, cosmo=self.cosmo)
+        precomputed=True, cache=True, cosmo=self.cosmo)
 
     Mpc_scale = gentools.Mpc_scale(dl=DD['DL'])
     sigma_critic = gentools.sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS'])
@@ -286,7 +286,7 @@ class SigmaMap(Map):
         dict_per_lens = {'data_L': data_L, 'data_S': data_S, 'scale': self.scale,
                         'bins': self.bins, 'back_dz': self.back_dz,
                         'rotate': self.rotate, 'colnames': self.colnames,
-                        'map_flag': 'deltasigma'}
+                        'map_flag': 'deltasigma', 'cosmo': self.cosmo}
 
         # Compute maps per lens
         with Parallel(n_jobs=self.njobs, require='sharedmem') as parallel:
@@ -386,7 +386,7 @@ class ShearMap(Map):
         dict_per_lens = {'data_L': data_L, 'data_S': data_S, 'scale': self.scale,
                         'bins': self.bins, 'back_dz': self.back_dz,
                         'rotate': self.rotate, 'colnames': self.colnames,
-                        'map_flag': 'shear'}
+                        'map_flag': 'shear', 'cosmo': self.cosmo}
 
         # Compute maps per lens
         with Parallel(n_jobs=self.njobs, require='sharedmem') as parallel:
