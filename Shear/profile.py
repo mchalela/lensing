@@ -385,7 +385,7 @@ class DeltaSigmaProfile(Profile):
         dict_per_lens = {'data_L': data_L, 'data_S': data_S, 'scale': self.scale,
                         'bins': self.bins, 'back_dz': self.back_dz, 'colnames': self.colnames,
                         'nboot': self.nboot, 'precomputed_distances': self.precomputed_distances,
-                        'pf_flag': 'deltasigma'}
+                        'pf_flag': 'deltasigma', 'cosmo': self.cosmo}
 
         # Compute profiles per lens
         with Parallel(n_jobs=self.njobs, require='sharedmem') as parallel:
