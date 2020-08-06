@@ -83,9 +83,9 @@ def _map_per_lens(j, dict_per_lens):
     # Compute distance and ellipticity components...
     dist, theta = gentools.sphere_angular_vector(dS['RAJ2000'].values, dS['DECJ2000'].values,
                                                 dL[dN['RA']], dL[dN['DEC']], units='deg')
-    dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # radial distance to the lens centre in Mpc/h
+    dist_Mpc = dist*3600. * Mpc_scale # radial distance to the lens centre in Mpc
     if scale is not None:
-        dist_hMpc /= dL[scale]
+        dist_Mpc /= dL[scale]
 
     # Rotation, if needed
     if rotate is not None:
@@ -96,8 +96,8 @@ def _map_per_lens(j, dict_per_lens):
         theta = 90. - theta
         e1, e2 = dS['e1'].values, -dS['e2'].values
 
-    px = dist_hMpc * np.cos(np.deg2rad(theta))
-    py = dist_hMpc * np.sin(np.deg2rad(theta))
+    px = dist_Mpc * np.cos(np.deg2rad(theta))
+    py = dist_Mpc * np.sin(np.deg2rad(theta))
 
     digit_x = gentools.digitize(px, bins=bins)
     digit_y = gentools.digitize(py, bins=bins)
@@ -199,7 +199,7 @@ class Map(object):
                 raise IOError('File already exist. You may want to use overwrite=True.')
         
         hdulist = [fits.PrimaryHDU()]
-        hdulist[0].header['SIGMA_CR'] = (self.sigma_critic, 'Sigma critic [h*Msun/pc^2]')
+        hdulist[0].header['SIGMA_CR'] = (self.sigma_critic, 'Sigma critic [Msun/pc^2]')
         for atr in ['px', 'py', 'shear', 'beta', 'stat_error', 'N']:
             hdulist.append(fits.ImageHDU(self.__getitem__(atr), name=atr))
         hdulist = fits.HDUList(hdulist)
@@ -210,10 +210,10 @@ class Map(object):
         if map_type == 'shear':
             self._shear_label = '$\gamma$'
         else:
-            self._shear_label = '$\Delta\Sigma [h\,M_{\odot}/pc^2]$'
+            self._shear_label = '$\Delta\Sigma [M_{\odot}/pc^2]$'
 
-        self._x_label = '$r\,[Mpc/h]$'
-        self._y_label = '$r\,[Mpc/h]$'
+        self._x_label = '$r\,[Mpc]$'
+        self._y_label = '$r\,[Mpc]$'
         return
 
     def QuickPlot(self, normed=True, cmap='gist_heat_r'):
@@ -265,16 +265,16 @@ class SigmaMap(Map):
         mp = self._reduce(mp)
         mp = self._cartesian(mp)
 
-        # Now in units of h*Msun/pc**2
-        self.sigma_critic = mp['sigma_critic']/self.cosmo.h
+
+        self.sigma_critic = mp['sigma_critic']
         self.N = mp['N'].astype(np.int32)
         self.beta = mp['beta']
-        self.shear  = mp['shear']/self.cosmo.h
-        self.shear1 = mp['shear1']/self.cosmo.h
-        self.shear2 = mp['shear2']/self.cosmo.h
-        self.shearx = mp['shearx']/self.cosmo.h
-        self.sheary = mp['sheary']/self.cosmo.h
-        self.stat_error = mp['stat_error']/self.cosmo.h
+        self.shear  = mp['shear']
+        self.shear1 = mp['shear1']
+        self.shear2 = mp['shear2']
+        self.shearx = mp['shearx']
+        self.sheary = mp['sheary']
+        self.stat_error = mp['stat_error']
 
         bins_centre = 0.5 * (self.bins[:-1] + self.bins[1:])
         self.px, self.py = np.meshgrid(bins_centre, bins_centre, indexing='xy')
@@ -374,7 +374,7 @@ class ShearMap(Map):
         self.sheary = mp['sheary']
         self.stat_error = mp['stat_error']
         # Now in units of h*Msun/pc**2
-        self.sigma_critic = mp['sigma_critic']/self.cosmo.h
+        self.sigma_critic = mp['sigma_critic']
 
         bins_centre = 0.5 * (self.bins[:-1] + self.bins[1:])
         self.px, self.py = np.meshgrid(bins_centre, bins_centre, indexing='xy')

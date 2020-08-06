@@ -139,14 +139,14 @@ def _profile_per_lens(j, dict_per_lens):
     dist, theta = gentools.sphere_angular_vector(dS['RAJ2000'].values, dS['DECJ2000'].values,
                                                 dL[dN['RA']], dL[dN['DEC']], units='deg')
     #theta += 90. 
-    dist_hMpc = dist*3600. * Mpc_scale*cosmo.h # radial distance to the lens centre in Mpc/h
+    dist_Mpc = dist*3600. * Mpc_scale   # radial distance to the lens centre in Mpc
     neg_et, ex = gentools.polar_rotation(dS['e1'].values, -dS['e2'].values, -np.deg2rad(90-theta))
     et = -neg_et
 
     if scale is not None:
-        dist_hMpc /= dL[scale]
+        dist_Mpc /= dL[scale]
 
-    digit = np.digitize(dist_hMpc, bins=bins)-1
+    digit = np.digitize(dist_Mpc, bins=bins)-1
         
     dict_per_bin = {'m': dS['m'].values, 
                     'weight': dS['weight'].values,
@@ -291,16 +291,16 @@ class DeltaSigmaProfile(Profile):
     data_S : pandas dataframe
         Source data attribute of LensCat.CompressedCatalog catalog, i.e: cat.data_S
     rin : float
-        Inner radius to compute the binning. Units of Mpc/h. If scale parameter is
+        Inner radius to compute the binning. Units of Mpc. If scale parameter is
         specified the value should be in units (a factor) of scale. Default: 0.1.
     rout : float
-        Outter radius to compute the binning. Units of Mpc/h. If scale parameter is
+        Outter radius to compute the binning. Units of Mpc. If scale parameter is
         specified the value should be in units (a factor) of scale. Default: 10.
     nbins : int
         Number of bins to compute the profile. Default: 10.
     scale : str
         Name of the column in data_L that will be used to scale the radial distances
-        to the source galaxies. Should be in units of Mpc/h. Default: None.
+        to the source galaxies. Should be in units of Mpc. Default: None.
     space : str
         String indicating if the radial binning should be logarithmic or linear.
         Possible values are: 'log' and 'lin'. Default: 'log'.
@@ -328,14 +328,14 @@ class DeltaSigmaProfile(Profile):
     r : array, float 
         Center of radial bins. If not scaled, in units of Mpc/h.
     shear : array, float
-        Tangential Delta Sigma value for each bin. In units of h*Msun/pc**2.
+        Tangential Delta Sigma value for each bin. In units of Msun/pc**2.
     shear_error : array, float
-        Bootstrap error in tangential Delta Sigma value for each bin. In units of h*Msun/pc**2.
+        Bootstrap error in tangential Delta Sigma value for each bin. In units of Msun/pc**2.
         Computed only if nboot>0.
     cero : array, float
-        Corssed (45deg) Delta Sigma value for each bin. In units of h*Msun/pc**2.
+        Corssed (45deg) Delta Sigma value for each bin. In units of Msun/pc**2.
     cero_error : array, float 
-        Bootstrap error in crossed Delta Sigma value for each bin. In units of h*Msun/pc**2.
+        Bootstrap error in crossed Delta Sigma value for each bin. In units of Msun/pc**2.
         Computed only if nboot>0.
     stat_error : array, float
         Statistical error computed directly with the number of galaxies. Assumes an
@@ -344,7 +344,7 @@ class DeltaSigmaProfile(Profile):
     N : array, int
         Number of galaxies stacked in each bin.
     sigma_critic : float
-        Mean Sigma Critic of the stacked system. In units of h*Msun/pc**2.
+        Mean Sigma Critic of the stacked system. In units of Msun/pc**2.
 
     '''
 
@@ -363,18 +363,19 @@ class DeltaSigmaProfile(Profile):
         if colnames is None: colnames = {'RA': 'RA', 'DEC': 'DEC', 'Z': 'Z'}
         self.colnames = colnames
 
+        # Compute the profile
         if data_S.index.name is not 'CATID':
             data_S_indexed = data_S.set_index('CATID')
         pf = self._profile(data_L=data_L, data_S=data_S_indexed)
         pf = self._reduce(pf)
 
-        # Now in units of h*Msun/pc**2
-        self.sigma_critic = pf['sigma_critic']/self.cosmo.h
-        self.shear = pf['shear']/self.cosmo.h
-        self.cero = pf['cero']/self.cosmo.h
-        self.shear_error = pf['shear_error']/self.cosmo.h
-        self.cero_error = pf['cero_error']/self.cosmo.h
-        self.stat_error = pf['stat_error']/self.cosmo.h
+        # Set the attributes
+        self.sigma_critic = pf['sigma_critic']
+        self.shear = pf['shear']
+        self.cero = pf['cero']
+        self.shear_error = pf['shear_error']
+        self.cero_error = pf['cero_error']
+        self.stat_error = pf['stat_error']
         self.r = 0.5 * (self.bins[:-1] + self.bins[1:])
         self.N = pf['N'].astype(np.int32)
         self.nlens = len(data_L)
@@ -433,16 +434,16 @@ class ShearProfile(Profile):
     data_S : pandas dataframe
         Source data attribute of LensCat.CompressedCatalog catalog, i.e: cat.data_S
     rin : float
-        Inner radius to compute the binning. Units of Mpc/h. If scale parameter is
+        Inner radius to compute the binning. Units of Mpc. If scale parameter is
         specified the value should be in units (a factor) of scale. Default: 0.1.
     rout : float
-        Outter radius to compute the binning. Units of Mpc/h. If scale parameter is
+        Outter radius to compute the binning. Units of Mpc. If scale parameter is
         specified the value should be in units (a factor) of scale. Default: 10.
     nbins : int
         Number of bins to compute the profile. Default: 10.
     scale : str
         Name of the column in data_L that will be used to scale the radial distances
-        to the source galaxies. Should be in units of Mpc/h. Default: None.
+        to the source galaxies. Should be in units of Mpc. Default: None.
     space : str
         String indicating if the radial binning should be logarithmic or linear.
         Possible values are: 'log' and 'lin'. Default: 'log'.
@@ -468,7 +469,7 @@ class ShearProfile(Profile):
     Attributes
     ----------
     r : array, float 
-        Center of radial bins. If not scaled, in units of Mpc/h.
+        Center of radial bins. If not scaled, in units of Mpc.
     shear : array, float
         Tangential Delta Sigma value for each bin. In units of shear (adimensional).
     shear_error : array, float
@@ -486,7 +487,7 @@ class ShearProfile(Profile):
     N : array, int
         Number of galaxies stacked in each bin.
     sigma_critic : float
-        Mean Sigma Critic of the stacked system. In units of h*Msun/pc**2.
+        Mean Sigma Critic of the stacked system. In units of Msun/pc**2.
 
     '''
 
@@ -516,8 +517,7 @@ class ShearProfile(Profile):
         self.stat_error = pf['stat_error']
         self.r = 0.5 * (self.bins[:-1] + self.bins[1:])
         self.N = pf['N'].astype(np.int32)
-        # Now in units of h*Msun/pc**2
-        self.sigma_critic = pf['sigma_critic']/self.cosmo.h
+        self.sigma_critic = pf['sigma_critic']
         self.nlens = len(data_L)
 
     def _profile(self, data_L, data_S):
@@ -574,7 +574,6 @@ class ClampittProfile(Profile):
         region_map = self._get_region(shear_map)
         pf = self._profile(region_map)
 
-        # Units of shear_map are in h*Msun/pc**2. We keep them.
         self.shear = pf['shear']
         self.cero = pf['cero']
         self.shear_error = pf['shear_error']
