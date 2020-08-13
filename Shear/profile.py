@@ -139,7 +139,7 @@ def _profile_per_lens(j, dict_per_lens):
         z_factor = 1.
 
     Mpc_scale = gentools.Mpc_scale(dl=DD['DL']) * z_factor
-    sigma_critic = gentools.sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS']) / (1 + z_factor)**2
+    sigma_critic = gentools.sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS']) / z_factor**2
     
 
     # Compute distance and ellipticity components...
