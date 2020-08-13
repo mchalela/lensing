@@ -119,6 +119,7 @@ def _profile_per_lens(j, dict_per_lens):
     dN = dict_per_lens['colnames']
     pf_flag = dict_per_lens['pf_flag']
     cosmo = dict_per_lens['cosmo']
+    lcoord = dict_per_lens['lcoord']
 
     dL = data_L.iloc[j]
     try:
@@ -129,8 +130,14 @@ def _profile_per_lens(j, dict_per_lens):
     mask_dz = dS['Z_B'].values >= dL[dN['Z']] + back_dz
     dS = dS[mask_dz]
 
+    # gentools.compute_lensing_distances() returns DANG distances
     DD = gentools.compute_lensing_distances(zl=dL[dN['Z']], zs=dS['Z_B'].values,
         precomputed=precomp_dist, cache=True, cosmo=cosmo)
+    if lcoord=='comov':
+        z_factor = 1 + dL[dN['Z']]
+        DD['DL'] *= z_factor
+        DD['DS'] *= z_factor
+        DD['DLS'] *= z_factor
 
     Mpc_scale = gentools.Mpc_scale(dl=DD['DL'])
     sigma_critic = gentools.sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS'])
@@ -322,6 +329,8 @@ class DeltaSigmaProfile(Profile):
         If that is not the case you can pass a dict with the new names.
         Example: colnames = {'RA': 'differentRAname', 'DEC': 'differentDECname', 'Z': 'Z'}.
         Default: None. This means colnames = {'RA': 'RA', 'DEC': 'DEC', 'Z': 'Z'}.
+    lensing_coord : str
+        Lensing coordinates, can be either 'DANG' or 'COMOV'.
 
     Attributes
     ----------
@@ -349,7 +358,7 @@ class DeltaSigmaProfile(Profile):
     '''
 
     def __init__(self, data_L, data_S, rin=0.1, rout=10., nbins=10, scale=None, space='log',
-        nboot=0, cosmo=cosmo, back_dz=0., precomputed_distances=True, njobs=1, colnames=None):
+        nboot=0, cosmo=cosmo, back_dz=0., precomputed_distances=True, njobs=1, colnames=None, lensing_coord='dang'):
         
         #if not isinstance(cat, (CompressedCatalog, ExpandedCatalog)):
         #   raise TypeError('cat must be a LensCat catalog.')
@@ -359,6 +368,7 @@ class DeltaSigmaProfile(Profile):
         self.scale = scale
         self.njobs = njobs
         self.precomputed_distances = precomputed_distances
+        self.lensing_coord = lensing_coord.lower()
 
         if colnames is None: colnames = {'RA': 'RA', 'DEC': 'DEC', 'Z': 'Z'}
         self.colnames = colnames
@@ -386,7 +396,7 @@ class DeltaSigmaProfile(Profile):
         dict_per_lens = {'data_L': data_L, 'data_S': data_S, 'scale': self.scale,
                         'bins': self.bins, 'back_dz': self.back_dz, 'colnames': self.colnames,
                         'nboot': self.nboot, 'precomputed_distances': self.precomputed_distances,
-                        'pf_flag': 'deltasigma', 'cosmo': self.cosmo}
+                        'pf_flag': 'deltasigma', 'cosmo': self.cosmo, 'lcoord': self.lensing_coord}
 
         # Compute profiles per lens
         with Parallel(n_jobs=self.njobs, require='sharedmem') as parallel:
@@ -465,6 +475,8 @@ class ShearProfile(Profile):
         If that is not the case you can pass a dict with the new names.
         Example: colnames = {'RA': 'differentRAname', 'DEC': 'differentDECname', 'Z': 'Z'}.
         Default: None. This means colnames = {'RA': 'RA', 'DEC': 'DEC', 'Z': 'Z'}.
+    lensing_coord : str
+        Lensing coordinates, can be either 'DANG' or 'COMOV'.
 
     Attributes
     ----------
@@ -492,7 +504,7 @@ class ShearProfile(Profile):
     '''
 
     def __init__(self, data_L, data_S, rin=0.1, rout=10., nbins=10, space='log',
-        nboot=0, cosmo=cosmo, back_dz=0., precomputed_distances=True, njobs=1, colnames=None):
+        nboot=0, cosmo=cosmo, back_dz=0., precomputed_distances=True, njobs=1, colnames=None, lensing_coord='dang'):
         
         #if not isinstance(cat, (CompressedCatalog, ExpandedCatalog)):
         #   raise TypeError('cat must be a LensCat catalog.')
@@ -501,6 +513,7 @@ class ShearProfile(Profile):
 
         self.njobs = njobs
         self.precomputed_distances = precomputed_distances
+        self.lensing_coord = lensing_coord.lower()
 
         if colnames is None: colnames = {'RA': 'RA', 'DEC': 'DEC', 'Z': 'Z'}
         self.colnames = colnames
@@ -526,7 +539,7 @@ class ShearProfile(Profile):
         dict_per_lens = {'data_L': data_L, 'data_S': data_S, 'scale': self.scale,
                         'bins': self.bins, 'back_dz': self.back_dz, 'colnames': self.colnames,
                         'nboot': self.nboot, 'precomputed_distances': self.precomputed_distances,
-                        'pf_flag': 'shear', 'cosmo': self.cosmo}
+                        'pf_flag': 'shear', 'cosmo': self.cosmo, 'lcoord': self.lensing_coord}
 
         # Compute profiles per lens
         with Parallel(n_jobs=self.njobs, require='sharedmem') as parallel:
