@@ -134,14 +134,14 @@ def _profile_per_lens(j, dict_per_lens):
     DD = gentools.compute_lensing_distances(zl=dL[dN['Z']], zs=dS['Z_B'].values,
         precomputed=precomp_dist, cache=True, cosmo=cosmo)
     if lcoord=='comov':
-        z_factor = 1 + dL[dN['Z']]
-        DD['DL'] *= z_factor
-        DD['DS'] *= z_factor
-        DD['DLS'] *= z_factor
+        z_factor = 1. + dL[dN['Z']]
+    else:
+        z_factor = 1.
 
-    Mpc_scale = gentools.Mpc_scale(dl=DD['DL'])
-    sigma_critic = gentools.sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS'])
+    Mpc_scale = gentools.Mpc_scale(dl=DD['DL']) * z_factor
+    sigma_critic = gentools.sigma_critic(dl=DD['DL'], ds=DD['DS'], dls=DD['DLS']) / (1 + z_factor)**2
     
+
     # Compute distance and ellipticity components...
     dist, theta = gentools.sphere_angular_vector(dS['RAJ2000'].values, dS['DECJ2000'].values,
                                                 dL[dN['RA']], dL[dN['DEC']], units='deg')
