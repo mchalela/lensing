@@ -85,6 +85,11 @@ def sphere_angular_vector(ra, dec, ra_center, dec_center, units='rad'):
     
     #Apply shperical cosine law
     cos_theta = (np.cos(y) - np.cos(x)*np.cos(dist))/(np.sin(x)*np.sin(dist))
+    # mask those galaxies with the exact same DEC causin the cosine law to explode with x=0
+    mask_zeros = (x==0.0)                   
+    if np.any(mask_zeros):
+        cos_theta[mask_zeros] = 0.
+
     #Round cosines that went over because of rounding errors
     round_high = (cos_theta >  1)
     round_low  = (cos_theta < -1)
