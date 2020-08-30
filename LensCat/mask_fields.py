@@ -1,35 +1,61 @@
 import numpy as np 
+from astropy.io import fits
 
 
-def mask_CS82(ra0,dec0):
+##############################################################################
 
-	RA=(300, 60) ; DEC=(-2, 2)
-
-	mask = ((ra0>RA[0])+(ra0<RA[1])) * ((dec0>DEC[0])*(dec0<DEC[1]))
-	return mask
-
-def mask_CFHT(ra0,dec0):
-
- 	RA_W1=(28, 41) ; DEC_W1=(-13, -2)	# W1
- 	RA_W2=(129, 139) ; DEC_W2=(-8, 1)	# W2
- 	RA_W3=(207, 222) ; DEC_W3=(50, 59)	# W3
- 	RA_W4=(329, 337) ; DEC_W4=(-2, 6) 	# W4
-
-	mask_W1 = ((ra0>RA_W1[0])*(ra0<RA_W1[1])) * ((dec0>DEC_W1[0])*(dec0<DEC_W1[1]))
-	mask_W2 = ((ra0>RA_W2[0])*(ra0<RA_W2[1])) * ((dec0>DEC_W2[0])*(dec0<DEC_W2[1]))
-	mask_W3 = ((ra0>RA_W3[0])*(ra0<RA_W3[1])) * ((dec0>DEC_W3[0])*(dec0<DEC_W3[1]))
-	mask_W4 = ((ra0>RA_W4[0])*(ra0<RA_W4[1])) * ((dec0>DEC_W4[0])*(dec0<DEC_W4[1]))
-	return mask_W1, mask_W2, mask_W3, mask_W4
-
-def mask_KiDS(ra0,dec0):
-
- 	#RA_N1=(125, 240) ; DEC_N=(-5, 5)		# North
- 	RA_N=(125, 240) ; DEC_N=(-5, 5)		# North
- 	RA_S=(-30, 55) ; DEC_S=(-35, -25)	# South
-
-	mask_N = ((ra0>RA_N[0])*(ra0<RA_N[1])) * ((dec0>DEC_N[0])*(dec0<DEC_N[1]))
-	mask_S = ((ra0>RA_S[0])*(ra0<RA_S[1])) * ((dec0>DEC_S[0])*(dec0<DEC_S[1]))
-	return mask_N, mask_S
+def digitize(data, bins):
+    """Return data bin index."""
+    N = len(bins) - 1
+    d = (N * (data - bins[0]) / (bins[-1] - bins[0])).astype(np.int)
+    return d
 
 
-mask_agn = (ra>125.)*(ra<240.)*(dec>-5.)*(dec<5.)*(zg>0.05)  # KiDS North
+def array2hdul(array, new_cards=[]):
+	'''Return an ImageHDU with header
+	array: numpy array
+	new_cards: list of tuples with name and value
+	'''
+	img = fits.ImageHDU(array)
+	if new_cards:
+		for key, val in new_cards:
+			img.header.append((key, val))
+	return img
+
+
+def build_mask(ra, dec, pix_size=0.1, catalog_name='CAT'):
+	'''Builds boolean mask of the full sky.	This will create 
+	a pixel grid in RA from 0 to 360, and DEC from -90 to 90,
+	and return an ImageHDU.
+
+	ra: numpy array of RA
+	dec: numpy array of DEC
+	pix_size: float
+		This value is the step in degrees for the RA-DEC grid.
+		It will be saved in the header as PIX_SIZE
+	catalog_name: string
+		Name of the catalog.
+		It will be saved in the header as CATALOG
+	'''
+
+	ra_bins = np.arange(0., 360., pix_size)
+	dec_bins = np.arange(-90., 90., pix_size)
+
+	ra_digit = digitize(ra, ra_bins)
+	dec_digit = digitize(dec, dec_bins)
+
+	coords = np.array(list(zip(ra_digit, dec_digit)))
+
+	mask = np.zeros((len(dec_bins), len(ra_bins)), dtype=bool)
+
+	mask[coords[:,1], coords[:,0]] = True
+
+	cards = [('CATALOG', catalog_name), ('PIX_SIZE', pix_size)]
+	img = array2hdul(mask.astype(np.int), new_cards=cards)
+	
+	return img
+
+
+
+
+
