@@ -8,6 +8,7 @@ from astropy.table import Table
 
 from grispy import GriSPy
 from ..gentools import classonly
+from .mask_fields import infield
 '''
 Que tipo de comportamiento espero?
 
@@ -57,21 +58,24 @@ class cat_paths:
 	else:
 		raise ValueError('There is no catalog path for the node: '+node)
 
+	# Catalogs paths
 	cs82 = {'CS1': os.path.join(p,'CS82','cs82_combined_lensfit_sources_nozcuts_aug_2015.h5')}
-
 	kids = {'G9': os.path.join(p,'KiDS','KiDS_DR3.1_G9_ugri_shear.h5'),
 			'G12': os.path.join(p,'KiDS','KiDS_DR3.1_G12_ugri_shear.h5'),
 			'G15': os.path.join(p,'KiDS','KiDS_DR3.1_G15_ugri_shear.h5'),
 			'G23': os.path.join(p,'KiDS','KiDS_DR3.1_G23_ugri_shear.h5'),
 			'GS': os.path.join(p,'KiDS','KiDS_DR3.1_GS_ugri_shear.h5')}
-	
 	cfht = {'W1': os.path.join(p,'CFHT','CFHTLens_W1.h5'),
 			'W2': os.path.join(p,'CFHT','CFHTLens_W2.h5'),
 			'W3': os.path.join(p,'CFHT','CFHTLens_W3.h5'),
 			'W4': os.path.join(p,'CFHT','CFHTLens_W4.h5')}
-
 	rcsl = {'RCSL1': os.path.join(p,'RCSL','RCSLens.h5')}
 
+	# Catalog masks path
+	field_mask = {'KiDS': os.path.join(p,'KiDS','KiDS_DR3.1_mask.fits'),
+				'CFHT': os.path.join(p,'CFHT','CFHTLens_mask.fits'),
+				'RCSL': os.path.join(p,'RCSL','RCSLens_mask.fits'),
+				'CS82': os.path.join(p,'CS82','cs82_aug_2015_mask.fits')}
 
 def read_columns(hdf5file, columns):
 	'''Read catalogue columns into pandas DataFrame
@@ -146,6 +150,7 @@ def read_catalog(file):
 		else:
 			raise ValueError('CATTYPE = {} is not a valid catalog.'.format(cat_type))
 	return cat
+
 
 
 class ExpandedCatalog(object):
@@ -263,7 +268,10 @@ class CompressedCatalog(object):
 	def __repr__(self):
 		return self.__str__()
 
-	def __add__(self, catalog2):
+	def __or__(self, catalog2):
+		''' Concatenate catalogs keeping the lens from the left catalog in the case
+		it is also present in the right catalog.
+		'''
 		assert self.LensID is not None, \
 			'Please set the LensID property with a valid column name from data_L.'
 
@@ -276,7 +284,7 @@ class CompressedCatalog(object):
 			self.data_S.reset_index(drop=False, inplace=True)
 
 		# Add lenses data
-		catalog3 = CompressedCatalog(name=self.name+'+'+catalog2.name, LensID=self.LensID)
+		catalog3 = CompressedCatalog(name=self.name+'|'+catalog2.name, LensID=self.LensID)
 		catalog3.data_L = pd.concat([self.data_L, catalog2.data_L])
 		catalog3.data_L = catalog3.data_L.drop_duplicates(subset=self.LensID, keep='first')
 		# Add sources data
@@ -286,7 +294,84 @@ class CompressedCatalog(object):
 		if keepID_S: catalog3.data_S.set_index('CATID', inplace=True)
 		return catalog3
 
+
+	def __add__(self, catalog2):
+		''' Concatenate catalogs with no Survey superposition. If a lens is present
+		in both catalogs, this method will identify the superposition in precomputed 
+		masks. If there is superposition in a region of the sky, the galaxies in 
+		the catalog of the left will be prioritized.
+		'''
+		assert (self.LensID is not None) and (catalog2.LensID is not None), \
+			'Please set the LensID property with a valid column name from data_L.'
+
+		idx_is_LensID = self.data_L.index.name == self.LensID
+		idx_is_CATID = self.data_S.index.name == 'CATID'
+
+		if not idx_is_LensID:
+			self.data_L.set_index(self.LensID, drop=True, inplace=True)
+			catalog2.data_L.set_index(catalog2.LensID, drop=True, inplace=True)
+
+		if not idx_is_CATID:
+			self.data_S.set_index('CATID', drop=True, inplace=True)
+			catalog2.data_S.set_index('CATID', drop=True, inplace=True)
+
+		# ------------------------------------------------
+		catnames = self.name.split('+')
+
+		# compute superposition mask
+		pos = catalog2.data_S[['RAJ2000', 'DECJ2000']]
+		superposition_mask = np.zeros(len(pos), dtype=bool)
+		for catname in catnames:
+			superposition_mask |= infield(
+									ra=pos.RAJ2000.values,
+									dec=pos.DECJ2000.values,
+									catname=catname)
+
+		# delete from data_S
+		catid2drop = catalog2.data_S.index[superposition_mask]
+		catalog2.data_S.drop(catid2drop, inplace=True)
+
+		# merge catalogs data_S
+		catalog3 = CompressedCatalog(name=self.name+'+'+catalog2.name, LensID=self.LensID)
+		catalog3.data_S = pd.concat([self.data_S.reset_index(drop=False),
+									catalog2.data_S.reset_index(drop=False)])
+
+		# merge catalogs data_L
+		catalog3.data_L = pd.concat([self.data_L.reset_index(drop=False),
+									catalog2.data_L.reset_index(drop=False)])
+		catalog3.data_L.drop_duplicates(subset=self.LensID, keep='first', inplace=True)
+		catalog3.data_L.set_index(self.LensID, drop=True, inplace=True)
+
+		# add sources from repeated lenses
+		repeated_idxs = self.data_L.index.intersection(catalog2.data_L.index)
+
+		for idx in repeated_idxs:
+			catid2 = catalog2.data_L['CATID'].loc[idx]
+			catid3 = catalog3.data_L['CATID'].loc[idx]
+			catalog3.data_L['CATID'].loc[idx] = np.hstack((catid3, np.setxor1d(catid2, catid2drop)))
+
+		# fix N_SOURCES
+		catalog3.data_L['N_SOURCES'] = np.fromiter(map(len, catalog3.data_L['CATID']), dtype=np.int32)
+
+		# ------------------------------------------------
+		# Restore IDs
+		if not idx_is_LensID:
+			self.data_L.reset_index(drop=False, inplace=True)
+			catalog2.data_L.reset_index(drop=False, inplace=True)
+
+		if not idx_is_CATID:
+			self.data_S.reset_index(drop=False, inplace=True)
+			catalog2.data_S.reset_index(drop=False, inplace=True)
+
+		catalog3.data_L.reset_index(drop=False, inplace=True)
+		catalog3.data_S.reset_index(drop=False, inplace=True)
+		return catalog3
+
 	def __and__(self, catalog2):
+		''' Concatenate catalogs without filtering.
+		This means that a single lens can have duplicated source
+		galaxies from diferent surveys.
+		'''
 
 		keepID_L, keepID_S = False, False
 		if self.data_L.index.name == self.LensID:
@@ -412,7 +497,7 @@ class Survey(object):
 			cat = CompressedCatalog(name=cls.name, LensID='ID')
 
 			# Lenses data
-			src_per_lens = np.array( list(map(len, dd)) )
+			src_per_lens = np.fromiter(map(len, dd), dtype=np.int32)
 			mask_nsrc = src_per_lens>0
 			cat_ids = [list(cls.data['CATID'].iloc[_]) for _ in ii]
 			dic ={'CATNAME': np.tile([cls.name], len(ii)),

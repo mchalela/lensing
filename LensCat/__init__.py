@@ -6,4 +6,4 @@ from .rcsl import RCSL
 
 from .main import ExpandedCatalog, CompressedCatalog, read_catalog
 
-from .mask_fields import build_mask
+from .mask_fields import build_mask, infield
