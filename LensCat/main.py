@@ -1,14 +1,19 @@
-import os, platform
+import os
+import platform
+
 import numpy as np
 import pandas as pd
 import h5py
+
 import itertools
+
 from astropy.io import fits
 from astropy.table import Table
 
 from grispy import GriSPy
+
 from ..gentools import classonly
-from .mask_fields import infield
+from .fields import infield, cat_paths
 '''
 Que tipo de comportamiento espero?
 
@@ -45,37 +50,6 @@ Metodos:
 '''
 
 #------------------------------------------------------------------------------
-
-class cat_paths:
-	'''Define your local paths
-	'''
-	node = platform.node()
-	if node in ['mirta2','mirta3','sersic','clemente', \
-				'clemente01','clemente02','clemente03','clemente04']:
-		p = '/mnt/is0/mchalela/lensing/'
-	elif node in ['univac','multivac']:
-		p = '/home/martin/Documentos/Doctorado/Lentes/lensing/'
-	else:
-		raise ValueError('There is no catalog path for the node: '+node)
-
-	# Catalogs paths
-	cs82 = {'CS1': os.path.join(p,'CS82','cs82_combined_lensfit_sources_nozcuts_aug_2015.h5')}
-	kids = {'G9': os.path.join(p,'KiDS','KiDS_DR3.1_G9_ugri_shear.h5'),
-			'G12': os.path.join(p,'KiDS','KiDS_DR3.1_G12_ugri_shear.h5'),
-			'G15': os.path.join(p,'KiDS','KiDS_DR3.1_G15_ugri_shear.h5'),
-			'G23': os.path.join(p,'KiDS','KiDS_DR3.1_G23_ugri_shear.h5'),
-			'GS': os.path.join(p,'KiDS','KiDS_DR3.1_GS_ugri_shear.h5')}
-	cfht = {'W1': os.path.join(p,'CFHT','CFHTLens_W1.h5'),
-			'W2': os.path.join(p,'CFHT','CFHTLens_W2.h5'),
-			'W3': os.path.join(p,'CFHT','CFHTLens_W3.h5'),
-			'W4': os.path.join(p,'CFHT','CFHTLens_W4.h5')}
-	rcsl = {'RCSL1': os.path.join(p,'RCSL','RCSLens.h5')}
-
-	# Catalog masks path
-	field_mask = {'KiDS': os.path.join(p,'KiDS','KiDS_DR3.1_mask.fits'),
-				'CFHT': os.path.join(p,'CFHT','CFHTLens_mask.fits'),
-				'RCSL': os.path.join(p,'RCSL','RCSLens_mask.fits'),
-				'CS82': os.path.join(p,'CS82','cs82_aug_2015_mask.fits')}
 
 def read_columns(hdf5file, columns):
 	'''Read catalogue columns into pandas DataFrame

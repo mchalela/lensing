@@ -5,7 +5,8 @@ from astropy.io import fits
 import h5py
 
 from ..gentools import classonly
-from .main import Survey, read_columns, cat_paths
+from .fields import cat_paths
+from .main import Survey, read_columns
 
 
 class CS82(Survey):
