@@ -308,7 +308,8 @@ class CompressedCatalog(object):
 		# merge catalogs data_S
 		catalog3 = CompressedCatalog(name=self.name+'+'+catalog2.name, LensID=self.LensID)
 		catalog3.data_S = pd.concat([self.data_S.reset_index(drop=False),
-									catalog2.data_S.reset_index(drop=False)])
+									catalog2.data_S.reset_index(drop=False)],
+									ignore_index=True)
 
 		# merge catalogs data_L
 		catalog3.data_L = pd.concat([self.data_L.reset_index(drop=False),
@@ -338,7 +339,7 @@ class CompressedCatalog(object):
 			catalog2.data_S.reset_index(drop=False, inplace=True)
 
 		catalog3.data_L.reset_index(drop=False, inplace=True)
-		catalog3.data_S.reset_index(drop=False, inplace=True)
+		catalog3.data_S.reset_index(drop=True, inplace=True)
 		return catalog3
 
 	def __and__(self, catalog2):
