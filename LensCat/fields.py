@@ -69,8 +69,9 @@ def sky2pix(ra, dec, pix_size):
     '''
     ra_nbins, dec_nbins = int(360/pix_size) + 1, int(180/pix_size) + 1
     
+    # Create bins so that pixel (0, 0) corresponds to sky (0, 90)
     ra_bins = np.linspace(0., 360., ra_nbins)
-    dec_bins = np.linspace(-90., 90., dec_nbins)
+    dec_bins = np.linspace(90., -90., dec_nbins)
 
     ra_digit = digitize(ra, ra_bins)
     dec_digit = digitize(dec, dec_bins)
@@ -114,6 +115,6 @@ def infield(ra, dec, catname):
     with fits.open(cat_paths.field_mask[catname]) as fm:
         data = fm[1].data
         xpix, ypix = sky2pix(ra, dec, pix_size=0.1)
-        mask = data[ypix, xpix] #.flatten()
+        mask = data[ypix, xpix].astype(np.bool) #.flatten()
 
     return mask
