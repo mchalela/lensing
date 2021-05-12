@@ -15,7 +15,7 @@ class cat_paths:
     node = platform.node()
     if node in ['mirta2','mirta3','sersic','clemente', \
                 'clemente01','clemente02','clemente03','clemente04']:
-        p = '/mnt/mchalela/lensing/'
+        p = '/home/mchalela/lensing/'
     elif node in ['univac','multivac']:
         p = '/home/martin/Documentos/Doctorado/Lentes/lensing/'
     elif node in ['jaffa']:
