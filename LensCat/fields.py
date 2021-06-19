@@ -29,7 +29,9 @@ class cat_paths:
             'G12': os.path.join(p,'KiDS','KiDS_DR3.1_G12_ugri_shear.h5'),
             'G15': os.path.join(p,'KiDS','KiDS_DR3.1_G15_ugri_shear.h5'),
             'G23': os.path.join(p,'KiDS','KiDS_DR3.1_G23_ugri_shear.h5'),
-            'GS': os.path.join(p,'KiDS','KiDS_DR3.1_GS_ugri_shear.h5')}
+            'GS': os.path.join(p,'KiDS','KiDS_DR3.1_GS_ugri_shear.h5'),
+            'DR4N': os.path.join(p,'KiDS','KiDS_DR4.N.SOM_gold_WL_cat.h5'),
+            'DR4S': os.path.join(p,'KiDS','KiDS_DR4.S.SOM_gold_WL_cat.h5')}
     cfht = {'W1': os.path.join(p,'CFHT','CFHTLens_W1.h5'),
             'W2': os.path.join(p,'CFHT','CFHTLens_W2.h5'),
             'W3': os.path.join(p,'CFHT','CFHTLens_W3.h5'),
@@ -40,7 +42,8 @@ class cat_paths:
     field_mask = {'KiDS': os.path.join(p,'KiDS','KiDS_DR3.1_mask.fits'),
                 'CFHT': os.path.join(p,'CFHT','CFHTLens_mask.fits'),
                 'RCSL': os.path.join(p,'RCSL','RCSLens_mask.fits'),
-                'CS82': os.path.join(p,'CS82','cs82_aug_2015_mask.fits')}
+                'CS82': os.path.join(p,'CS82','cs82_aug_2015_mask.fits'),
+                'KiDSDR4': os.path.join(p,'KiDS','KiDS_DR4_mask.fits')}
 
 
 # =============================================================================
@@ -109,7 +112,7 @@ def build_mask(ra, dec, pix_size=0.1, catname='CAT'):
 def infield(ra, dec, catname):
     '''Check if given positions RA, DEC lie within the region of CATNAME
     '''
-    assert catname in ('CS82', 'KiDS', 'RCSL', 'CFHT'), \
+    assert catname in ('CS82', 'RCSL', 'CFHT', 'KiDS', 'KiDSDR4'), \
         f'catname = {catname} is not a valid catalog name.'
 
     with fits.open(cat_paths.field_mask[catname]) as fm:

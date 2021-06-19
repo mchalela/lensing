@@ -21,6 +21,7 @@ class KiDS(Survey):
 	@classonly
 	def load(cls, fields=None, columns=None, science_cut=True):
 		'''Method to load the catalogue
+		For DR4 use fields = ['DR4N', 'DR4S']
 		'''
 
 		# Check some things...
@@ -28,6 +29,10 @@ class KiDS(Survey):
 			fields = ['G9','G12','G15','G23','GS']
 		if columns is None:
 			columns = ['RAJ2000','DECJ2000','Z_B','e1','e2','m','weight','ODDS','fitclass','MASK']
+		
+		# Check for DR4 and change the catalog name 
+		if 'DR4N' in fields or 'DR4S' in fields:
+			cls.name = 'KiDSDR4'
 
 		# Somehow we load the data and save it in cls.data
 		field_paths = [cat_paths.kids[field] for field in fields]
