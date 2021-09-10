@@ -414,7 +414,7 @@ class DeltaSigmaProfile(Profile):
 
     def __init__(self, data_L, data_S, rin=0.1, rout=10., nbins=10, scale=None, space='log',
         nboot=0, cosmo=cosmo, back_dz=0., precomputed_distances=True, njobs=1,
-        colnames=None, lensing_coord='dang', covariance=False):
+        colnames=None, lensing_coord='dang', covariance=True):
         
         #if not isinstance(cat, (CompressedCatalog, ExpandedCatalog)):
         #   raise TypeError('cat must be a LensCat catalog.')
