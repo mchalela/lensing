@@ -2,6 +2,7 @@ import os, platform
 import datetime
 import numpy as np
 import pandas as pd
+from astropy.io import fits
 from astropy.cosmology import LambdaCDM
 from joblib import Parallel, delayed
 
@@ -230,6 +231,7 @@ class Profile(object):
         self.r = None
         self.N = None
         self.nlens = None
+        self.cov = None
 
 
     def __getitem__(self, key):
@@ -249,8 +251,9 @@ class Profile(object):
     def __repr__(self):
         return str(self)
 
-    def write_to(self, file, header=None, colnames=True, overwrite=False):
-        '''Add a header to lensing.shear.Profile output file
+    def _write_to(self, file, header=None, colnames=True, overwrite=False):
+        ''' DEPRECATED
+        Add a header to lensing.shear.Profile output file
         to know the sample parameters used to build it.
         
          file:      (str) Name of output file
@@ -284,6 +287,57 @@ class Profile(object):
             np.savetxt(f, p, fmt=['%12.6f']*6+['%8i'])      
         return None
 
+    def write_to(self, file, header=None, colnames=True, overwrite=False):
+        '''Add a header to lensing.shear.Profile output file
+        to know the sample parameters used to build it.
+        
+         file:      (str) Name of output file
+         header:    (dic) Dictionary with parameter cuts. Optional.
+                Example: {'z_min':0.1, 'z_max':0.3, 'odds_min':0.5}
+         colnames:  (bool) Flag to write columns names as first line.
+                If False, column names are commented.
+        '''
+        if os.path.isfile(file):
+            if overwrite:
+                os.remove(file)
+            else:
+                raise IOError('File already exist. You may want to use overwrite=True.')
+
+        names = ['r', 'shear', 'cero', 'stat_error', 'N']
+        data_arr = np.column_stack((self.r, self.shear, self.cero, self.stat_error, self.N))
+        data = pd.DataFrame(data_arr, columns=names)
+
+        # EXTENSION 0 =================================
+        hdulist = [fits.PrimaryHDU()]
+        
+        # EXTENSION 1 =================================
+        cols = []
+        for name, arr in data.iteritems():
+            fmt = '1K' if name == 'N' else '1D'
+            c = fits.Column(name=name, format=fmt, array=arr.to_numpy())
+            cols.append(c)
+        hdu = fits.BinTableHDU.from_columns(cols)
+        
+        # reorder format cards
+        for line in list(hdu.header.items()):
+            if 'TFORM' in line[0]:
+                del hdu.header[line[0]]
+                hdu.header.append(line, end=True)
+        
+        # user metadata
+        if header is not None:
+            hdu.header.append(('METADATA', '==========='))
+            for key, value in list(header.items()):
+                hdu.header.append((str(key), str(value)))
+        hdulist.append(hdu)
+
+        # EXTENSION 2 =================================
+        hdu_cov = fits.ImageHDU(self.cov)
+        hdulist.append(hdu_cov)
+
+        hdulist = fits.HDUList(hdulist)
+        hdulist.writeto(file, overwrite=overwrite)   
+        return None
 
 
 @gentools.timer
@@ -359,7 +413,8 @@ class DeltaSigmaProfile(Profile):
     '''
 
     def __init__(self, data_L, data_S, rin=0.1, rout=10., nbins=10, scale=None, space='log',
-        nboot=0, cosmo=cosmo, back_dz=0., precomputed_distances=True, njobs=1, colnames=None, lensing_coord='dang'):
+        nboot=0, cosmo=cosmo, back_dz=0., precomputed_distances=True, njobs=1,
+        colnames=None, lensing_coord='dang', covariance=False):
         
         #if not isinstance(cat, (CompressedCatalog, ExpandedCatalog)):
         #   raise TypeError('cat must be a LensCat catalog.')
@@ -370,6 +425,7 @@ class DeltaSigmaProfile(Profile):
         self.njobs = njobs
         self.precomputed_distances = precomputed_distances
         self.lensing_coord = lensing_coord.lower()
+        self.nlens = len(data_L)
 
         if colnames is None: colnames = {'RA': 'RA', 'DEC': 'DEC', 'Z': 'Z'}
         self.colnames = colnames
@@ -378,18 +434,20 @@ class DeltaSigmaProfile(Profile):
         if data_S.index.name is not 'CATID':
             data_S_indexed = data_S.set_index('CATID')
         pf = self._profile(data_L=data_L, data_S=data_S_indexed)
-        pf = self._reduce(pf)
+        pf_final = self._reduce(pf)
+        if covariance:
+            cov = self._cov_matrix(pf)
 
         # Set the attributes
-        self.sigma_critic = pf['sigma_critic']
-        self.shear = pf['shear']
-        self.cero = pf['cero']
-        self.shear_error = pf['shear_error']
-        self.cero_error = pf['cero_error']
-        self.stat_error = pf['stat_error']
+        self.sigma_critic = pf_final['sigma_critic']
+        self.shear = pf_final['shear']
+        self.cero = pf_final['cero']
+        self.shear_error = pf_final['shear_error']
+        self.cero_error = pf_final['cero_error']
+        self.stat_error = pf_final['stat_error']
         self.r = 0.5 * (self.bins[:-1] + self.bins[1:])
-        self.N = pf['N'].astype(np.int32)
-        self.nlens = len(data_L)
+        self.N = pf_final['N'].astype(np.int32)
+        self.cov = cov
 
     def _profile(self, data_L, data_S):
         ''' Computes profile for CompressedCatalog
@@ -407,13 +465,13 @@ class DeltaSigmaProfile(Profile):
 
     def _reduce(self, pf):
 
-        shear = np.sum( [pf[_]['shear_j'] for _ in range(len(pf))], axis=0)
-        cero = np.sum( [pf[_]['cero_j'] for _ in range(len(pf))], axis=0)
-        accum_w = np.sum( [pf[_]['accum_w_j'] for _ in range(len(pf))], axis=0)
-        sigma_critic = np.sum( [pf[_]['sigma_critic_j'] for _ in range(len(pf))], axis=0)
-        m_cal_num = np.sum( [pf[_]['m_cal_num_j'] for _ in range(len(pf))], axis=0)
-        stat_error_num = np.sum( [pf[_]['stat_error_num_j'] for _ in range(len(pf))], axis=0)
-        N = np.sum( [pf[_]['N_j'] for _ in range(len(pf))], axis=0)
+        shear = np.sum( [jpf['shear_j'] for jpf in pf], axis=0)
+        cero = np.sum( [jpf['cero_j'] for jpf in pf], axis=0)
+        accum_w = np.sum( [jpf['accum_w_j'] for jpf in pf], axis=0)
+        sigma_critic = np.sum( [jpf['sigma_critic_j'] for jpf in pf], axis=0)
+        m_cal_num = np.sum( [jpf['m_cal_num_j'] for jpf in pf], axis=0)
+        stat_error_num = np.sum( [jpf['stat_error_num_j'] for jpf in pf], axis=0)
+        N = np.sum( [jpf['N_j'] for jpf in pf], axis=0)
 
         m_cal = m_cal_num / accum_w
         shear = (shear/accum_w) / m_cal
@@ -430,6 +488,34 @@ class DeltaSigmaProfile(Profile):
         x['cero_error'] = np.std(cero[1:,:], axis=0)
         x['N'] = N  
         return x
+
+    def _cov_matrix(self, pf):
+        '''Covariance matrix. Following Fang 2019 eq 5.'''
+        
+        m_arr = np.zeros((self.nlens, self.nbins))
+        w_arr = np.zeros((self.nlens, self.nbins))
+        shear_arr = np.zeros((self.nlens, self.nbins))
+
+        for j, jpf in enumerate(pf):
+            # Sum over all lenses
+            m_arr += jpf['m_cal_num_j']
+            w_arr += jpf['accum_w_j']
+            shear_arr += jpf['shear_j']
+            # Remove the j lens in the j row
+            m_arr[j, :] -= jpf['m_cal_num_j']
+            w_arr[j, :] -= jpf['accum_w_j']
+            shear_arr[j, :] -= jpf['shear_j']      
+        # Compute shear for each j realization without the j lens
+        m_cal = m_arr / w_arr
+        shear = (shear_arr/w_arr) / m_cal
+        diff_shear = shear - shear.mean(axis=0)
+
+        # Covariance
+        cov = np.zeros((self.nbins, self.nbins))
+        for k_ds in diff_shear:
+            cov += k_ds.reshape(-1, 1) * k_ds
+        cov *= (self.nlens - 1) / self.nlens
+        return cov
 
 
 @gentools.timer

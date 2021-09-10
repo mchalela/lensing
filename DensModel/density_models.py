@@ -84,7 +84,7 @@ class Density:
 		
 		#calculo de c usando la relacion de Duffy et al 2008. https://arxiv.org/pdf/0804.2486.pdf
 		c = 5.71 * (M200_h/2.e12)**-0.084 * (1.+self.z)**-0.47
-		
+
 		deltac=(200./3.)*( (c**3) / ( np.log(1.+c)- (c/(1+c)) ))
 		x=(r_h*c)/R200
 		m1=x< 1.0
@@ -121,7 +121,7 @@ class Density:
 		
 		#calculo de c usando la relacion de Duffy et al 2008. https://arxiv.org/pdf/0804.2486.pdf
 		c = 5.71 * (M200_h/2.e12)**-0.084 * (1.+self.z)**-0.47
-		
+
 		rs = R200/c
 		deltac=(200./3.)*( (c**3) / ( np.log(1.+c)- (c/(1+c)) ))	
 		
@@ -146,8 +146,8 @@ class Density:
 			return _sigma_nfw(x_off)
 							
 		def _sigma_off(r_off, x):
-			err_max=1e0
-			err_min=1e-1
+			err_max=1e-1
+			err_min=1e-2
 			epsrel=x/(10+x)*(err_max-err_min)+err_min
 			th = np.linspace(0,2*np.pi,1000)
 			int_sigma_theta = simps(_sigma_theta(th, x, r_off), th, even='last')/(2*np.pi)
@@ -156,8 +156,8 @@ class Density:
 			return P*int_sigma_theta
 			
 		def _sigma_bar_off(x):
-			err_max=1e-3
-			err_min=1e-3
+			err_max=1e-4
+			err_min=1e-4
 			epsrel=x/(10+x)*(err_max-err_min)+err_min
 			int_sigma_r	= quad(lambda r_off: _sigma_off(r_off, x), 0., np.inf, epsabs=0, epsrel=epsrel)[0]
 			return int_sigma_r
@@ -166,8 +166,8 @@ class Density:
 		delta_sigma_off=[]
 		for i in range(BIN):
 			x=r_h[i]
-			err_max=1e-1
-			err_min=1e-2
+			err_max=1e-2
+			err_min=1e-3
 			epsrel=x/(10+x)*(err_max-err_min)+err_min
 			sigma_bar_off = quad(lambda x_i: (_sigma_bar_off(x_i)*x_i), 0., x, epsabs=0, epsrel=epsrel)[0] *2. / (x**2)
 			sigma_off = quad(lambda r_off: _sigma_off(r_off, x), 0., np.inf, epsabs=0, epsrel=epsrel)[0]
@@ -193,9 +193,9 @@ class Density:
 		'''
 		Precomputes some parameters
 		'''
-		kh_npoints = 1e7 		# Something like 1e7 
+		kh_npoints = 10**7 		# Something like 1e7 
 		self.kh_min = 1e-4
-		self.kh_max = 1e4
+		self.kh_max = 1e2
 		self.kh_bins = np.geomspace(self.kh_min, self.kh_max, kh_npoints, endpoint=True)
 
 		Dang_h = self.cosmo.angular_diameter_distance(self.z).value * self.cosmo.h 	# in Mpc/h
@@ -254,7 +254,7 @@ class Density:
 				print('P(k): get_results...')
 				results = camb.get_results(pars)
 				print('P(k): get_matter_power_spectrum...')
-				kh, zz, Pk = results.get_matter_power_spectrum(minkh=self.kh_min, maxkh=self.kh_max, npoints = 10**5)
+				kh, zz, Pk = results.get_matter_power_spectrum(minkh=self.kh_min, maxkh=self.kh_max, npoints=10**5)
 
 				# Columns: kh (h/Mpc)	Pk (Mpc^3/h^3)
 				table = np.vstack((kh, Pk[0,:])).T
