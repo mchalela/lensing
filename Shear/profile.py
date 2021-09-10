@@ -502,9 +502,10 @@ class DeltaSigmaProfile(Profile):
             w_arr += jpf['accum_w_j']
             shear_arr += jpf['shear_j']
             # Remove the j lens in the j row
-            m_arr[j, :] -= jpf['m_cal_num_j']
-            w_arr[j, :] -= jpf['accum_w_j']
-            shear_arr[j, :] -= jpf['shear_j']      
+            m_arr[j, :] -= jpf['m_cal_num_j'].flatten()
+            w_arr[j, :] -= jpf['accum_w_j'].flatten()
+            shear_arr[j, :] -= jpf['shear_j'].flatten()
+               
         # Compute shear for each j realization without the j lens
         m_cal = m_arr / w_arr
         shear = (shear_arr/w_arr) / m_cal
